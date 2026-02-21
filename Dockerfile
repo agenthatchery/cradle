@@ -10,6 +10,8 @@ WORKDIR /app
 # Copy requirements first for layer caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Explicitly upgrade docker to the latest version
+RUN pip install --no-cache-dir --upgrade docker
 RUN playwright install chromium --with-deps 2>/dev/null || echo "Playwright install skipped"
 
 # Copy source code

@@ -31,6 +31,7 @@ def load_skills():
         ('memory', ['update_memory', 'read_file', 'log_reflection', 'read_reflections', 'commit_and_push_to_github']),
         ('github_tools', ['create_github_repo', 'create_github_pr']),
         ('agentplaybooks_tools', ['manage_playbooks', 'playbook_memory']),
+        ('tasks_skill', ['enqueue_task', 'list_tasks']),
         ('agent', 'check_model_router'),
         ('benchmark', 'benchmark_models'),
         ('headless_browser', 'headless_browse'),
@@ -100,4 +101,14 @@ def load_skills():
                     except Exception as e:
                         logger.error(f"Failed to load skill folder {item}: {e}")
 
-    return tools_list
+    # 3. Deduplicate tools by function name
+    unique_tools = []
+    seen_names = set()
+    for tool in tools_list:
+        if tool.__name__ not in seen_names:
+            unique_tools.append(tool)
+            seen_names.add(tool.__name__)
+        else:
+            logger.info(f"Skipping duplicate tool: {tool.__name__}")
+            
+    return unique_tools
