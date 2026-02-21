@@ -47,7 +47,7 @@ logger.info(f"Loaded {len(my_tools)} unique tools: {[t.__name__ for t in my_tool
 
 # ===== MODEL TIERING =====
 MODEL_USER = None
-for model_name in ["gemini-3.1-pro", "gemini-3.0-pro", "gemini-2.5-pro"]:
+for model_name in ["gemini-3.1-pro", "gemini-3-pro-preview", "gemini-2.5-pro"]:
     try:
         config_user = types.GenerateContentConfig(
             system_instruction=get_core_prompt(),
@@ -64,7 +64,7 @@ for model_name in ["gemini-3.1-pro", "gemini-3.0-pro", "gemini-2.5-pro"]:
 
 # Flash for autonomous ticks (always available, cheap)
 chat_tick = None
-for flash_model in ["gemini-3.0-flash", "gemini-2.5-flash"]:
+for flash_model in ["gemini-3-flash-preview", "gemini-2.5-flash"]:
     try:
         config_tick = types.GenerateContentConfig(
             system_instruction=get_core_prompt(),
@@ -98,6 +98,18 @@ def _send_with_retry(chat, text: str, max_retries: int = 3) -> str:
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 logger.warning(f"Rate limited on primary chat. Triggering fallback chain...")
                 raise Exception(f"RateLimitExhausted: {error_str}")
+            elif "404" in error_str or "NOT_FOUND" in error_str:
+                logger.error(f"404 Not Found on native model. Queueing auto-healing bug task.")
+                try:
+                    from tasks_skill import enqueue_task
+                    enqueue_task(
+                        goal=f"CRITICAL BUG IN AGENT NATIVE MODELS: A native chat client returned 404 NOT FOUND. Use search_web to find the correct current API endpoint name for recent Gemini models, update agent.py and model_router.py, then commit and restart.",
+                        priority=1,
+                        assigned_agent="self-healer"
+                    )
+                except Exception as inline_e:
+                    logger.error(f"Failed to queue bug task: {inline_e}")
+                raise Exception(f"ModelNotFound: {error_str}")
             else:
                 raise e
     raise Exception("Max retries exceeded")

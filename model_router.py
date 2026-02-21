@@ -26,9 +26,9 @@ MODELS = {
         "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro:generateContent",
         "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 95,
     },
-    "gemini-3.0-pro": {
+    "gemini-3-pro-preview": {
         "tier": "strategist", "provider": "gemini",
-        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-pro:generateContent",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent",
         "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 94,
     },
     "gemini-2.5-pro": {
@@ -65,9 +65,9 @@ MODELS = {
     },
 
     # === TIER 2: WORKHORSE ===
-    "gemini-3.0-flash": {
+    "gemini-3-flash-preview": {
         "tier": "workhorse", "provider": "gemini",
-        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
         "cost_input": 0.30, "cost_output": 2.50, "rpm": 10, "quality": 78,
     },
     "gemini-2.5-flash": {
@@ -144,13 +144,13 @@ MODELS = {
 # MiniMax is ALWAYS second fallback (user request: coding plan, best value)
 FALLBACK_CHAINS = {
     "strategist": [
-        "gemini-3.1-pro", "gemini-3.0-pro", "minimax-m2.5",       # Primary + second fallback
+        "gemini-3.1-pro", "gemini-3-pro-preview", "minimax-m2.5",       # Primary + second fallback
         "openai-gpt-4o", "gemini-2.5-pro", "openai-gpt5-mini",
         "or-deepseek-r1", "or-qwen3-coder",
-        "gemini-3.0-flash", "gemini-2.5-flash",
+        "gemini-3-flash-preview", "gemini-2.5-flash",
     ],
     "workhorse": [
-        "gemini-3.0-flash", "gemini-2.5-flash", "minimax-m2.5-wh",  # Primary + second fallback
+        "gemini-3-flash-preview", "gemini-2.5-flash", "minimax-m2.5-wh",  # Primary + second fallback
         "openai-gpt-4o-mini", "openai-gpt5-nano", "openai-gpt4.1-nano",
         "groq-kimi-k2", "groq-llama-3.3-70b",
         "or-hermes-405b",
@@ -263,6 +263,18 @@ def route_request(tier, system_prompt, user_prompt, max_retries=2):
                 error_str = str(e)
                 if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "rate" in error_str.lower():
                     logger.warning(f"[{model_name}] Rate limited. Instantly falling back to next provider...")
+                    break
+                elif "404" in error_str or "NOT_FOUND" in error_str:
+                    logger.error(f"[{model_name}] 404 Not Found! Queueing auto-healing bug task.")
+                    try:
+                        from tasks_skill import enqueue_task
+                        enqueue_task(
+                            goal=f"CRITICAL BUG IN MODEL ROUTER: Model '{model_name}' returned 404 NOT FOUND. Use search_web to find the correct current API endpoint name for {model_name} and update model_router.py, then commit and restart.",
+                            priority=1,
+                            assigned_agent="self-healer"
+                        )
+                    except Exception as inline_e:
+                        logger.error(f"Failed to queue bug task: {inline_e}")
                     break
                 else:
                     logger.error(f"[{model_name}] Error: {error_str}")
