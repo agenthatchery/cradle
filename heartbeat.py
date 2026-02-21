@@ -3,6 +3,7 @@ import logging
 import json
 import agent
 import concurrent.futures
+import os
 from agentplaybooks_tools import manage_playbooks
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,9 @@ def execute_single_task(task_id, goal, val):
         val["result"] = result
         val["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         
+        playbook_id = os.environ.get("PLAYBOOK_ID")
         manage_playbooks("write_memory", json.dumps({
+            "playbook_id": playbook_id,
             "key": f"task:{task_id}",
             "value": val,
             "tags": ["completed_task", f"id:{task_id}"]
@@ -35,7 +38,9 @@ def execute_single_task(task_id, goal, val):
         logger.error(f"Heartbeat [Task {task_id}]: Failed: {e}")
         val["status"] = "failed"
         val["error"] = str(e)
+        playbook_id = os.environ.get("PLAYBOOK_ID")
         manage_playbooks("write_memory", json.dumps({
+            "playbook_id": playbook_id,
             "key": f"task:{task_id}",
             "value": val,
             "tags": ["failed_task", f"id:{task_id}"]
@@ -50,7 +55,9 @@ def heartbeat_step():
     """
     logger.debug("Heartbeat: Checking for pending work...")
     
+    playbook_id = os.environ.get("PLAYBOOK_ID")
     args = json.dumps({
+        "playbook_id": playbook_id,
         "search": "",
         "tags": ["pending_task"]
     })
@@ -82,10 +89,10 @@ def heartbeat_step():
             task_id = val.get("id")
             goal = val.get("goal")
             
-            # 2. Mark as processing
             val["status"] = "processing"
             val["started_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
             manage_playbooks("write_memory", json.dumps({
+                "playbook_id": os.environ.get("PLAYBOOK_ID"),
                 "key": f"task:{task_id}",
                 "value": val,
                 "tags": ["processing_task", f"id:{task_id}"]
