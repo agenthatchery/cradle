@@ -1,0 +1,41 @@
+version: "3.8"
+
+# Cradle Multi-Agent Swarm
+# Start all agents: docker compose up -d
+# View logs: docker compose logs -f
+
+services:
+  cradle:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cradle
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  researcher:
+    build:
+      context: ./researcher-agent
+      dockerfile: Dockerfile
+    container_name: researcher-agent
+    restart: unless-stopped
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    volumes:
+      - researcher-data:/app/data
+    depends_on:
+      cradle:
+        condition: service_healthy
+
+volumes:
+  researcher-data:

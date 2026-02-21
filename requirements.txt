@@ -1,0 +1,8 @@
+python-telegram-bot
+google-genai
+python-dotenv
+requests
+beautifulsoup4
+playwright
+docker
+gitpython
