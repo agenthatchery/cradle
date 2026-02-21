@@ -2,6 +2,10 @@ import os
 import logging
 import asyncio
 from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import agent
@@ -9,9 +13,6 @@ import concurrent.futures
 
 # Dedicated thread pool for heavy LLM / Sandbox executions
 agent_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
-
-# Load environment variables from .env
-load_dotenv()
 
 # Setup logging
 logging.basicConfig(

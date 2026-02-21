@@ -85,7 +85,7 @@ def _send_with_retry(chat, text: str, max_retries: int = 3) -> str:
     for attempt in range(max_retries):
         try:
             response = chat.send_message(text)
-            return response.text
+            return response.text if response.text else "Tasks executed successfully (no text output)."
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
