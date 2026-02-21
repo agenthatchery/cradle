@@ -47,7 +47,7 @@ logger.info(f"Loaded {len(my_tools)} unique tools: {[t.__name__ for t in my_tool
 
 # ===== MODEL TIERING =====
 MODEL_USER = None
-for model_name in ["gemini-3.1-pro", "gemini-3-pro-preview", "gemini-2.5-pro"]:
+for model_name in ["gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-2.5-pro"]:
     try:
         config_user = types.GenerateContentConfig(
             system_instruction=get_core_prompt(),

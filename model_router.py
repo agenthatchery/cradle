@@ -23,10 +23,10 @@ MODELS = {
     # === TIER 1: STRATEGIST ===
     "gemini-3.1-pro": {
         "tier": "strategist", "provider": "gemini",
-        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro:generateContent",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
         "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 95,
     },
-    "gemini-3-pro-preview": {
+    "gemini-3-pro": {
         "tier": "strategist", "provider": "gemini",
         "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent",
         "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 94,
@@ -69,6 +69,11 @@ MODELS = {
         "tier": "workhorse", "provider": "gemini",
         "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
         "cost_input": 0.30, "cost_output": 2.50, "rpm": 10, "quality": 78,
+    },
+    "gemini-3-flash": {
+        "tier": "workhorse", "provider": "gemini",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
+        "cost_input": 0.10, "cost_output": 0.30, "rpm": 15, "quality": 85,
     },
     "gemini-2.5-flash": {
         "tier": "workhorse", "provider": "gemini",
@@ -144,13 +149,13 @@ MODELS = {
 # MiniMax is ALWAYS second fallback (user request: coding plan, best value)
 FALLBACK_CHAINS = {
     "strategist": [
-        "gemini-3.1-pro", "gemini-3-pro-preview", "minimax-m2.5",       # Primary + second fallback
+        "gemini-3.1-pro", "gemini-3-pro", "minimax-m2.5",       # Primary + second fallback
         "openai-gpt-4o", "gemini-2.5-pro", "openai-gpt5-mini",
         "or-deepseek-r1", "or-qwen3-coder",
-        "gemini-3-flash-preview", "gemini-2.5-flash",
+        "gemini-3-flash", "gemini-2.5-flash",
     ],
     "workhorse": [
-        "gemini-3-flash-preview", "gemini-2.5-flash", "minimax-m2.5-wh",  # Primary + second fallback
+        "gemini-3-flash", "gemini-2.5-flash", "minimax-m2.5-wh",  # Primary + second fallback
         "openai-gpt-4o-mini", "openai-gpt5-nano", "openai-gpt4.1-nano",
         "groq-kimi-k2", "groq-llama-3.3-70b",
         "or-hermes-405b",
