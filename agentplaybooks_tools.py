@@ -31,7 +31,8 @@ def _mcp_request(endpoint: str, method: str, tool_name: str, arguments: dict, ap
     data = json.dumps(payload).encode('utf-8')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Cradle/1.0"
     }
     
     req = urllib.request.Request(url, data=data, headers=headers)
@@ -71,9 +72,9 @@ def manage_playbooks(tool_name: str, arguments: str) -> str:
     
     The arguments parameter must be a valid JSON string.
     """
-    api_key = os.environ.get("PLAYBOOK_USER_API_KEY")
+    api_key = os.environ.get("AGENTPLAYBOOKS_KEY")
     if not api_key:
-        return "Failed: PLAYBOOK_USER_API_KEY not set. Ask your creator for an apb_live_... key."
+        return "Failed: AGENTPLAYBOOKS_KEY not set. Ask your creator for an apb_live_... key."
     
     try:
         args = json.loads(arguments) if isinstance(arguments, str) else arguments
