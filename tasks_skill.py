@@ -7,7 +7,15 @@ from agentplaybooks_tools import manage_playbooks
 def enqueue_task(goal: str, priority: int = 5, parent_task_id: str = None, assigned_agent: str = None) -> str:
     """
     Adds a new task to the background execution queue.
+    Checks for exact or highly similar duplicates first.
     """
+    # 1. Deduplication check
+    existing_tasks = list_tasks("pending")
+    if "No tasks found" not in existing_tasks:
+        check_prefix = goal[:80]
+        if check_prefix in existing_tasks:
+            return f"Task skipped (duplicate): A pending task with a matching goal already exists."
+            
     task_id = str(uuid.uuid4())[:8]
     task_obj = {
         "id": task_id,

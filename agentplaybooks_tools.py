@@ -133,6 +133,15 @@ def store_tiered_memory(data_key: str, value: dict, tier: str = "working") -> st
     if tier not in ["working", "episodic", "semantic", "archival"]:
         return "Invalid tier. Must be working, episodic, semantic, or archival."
         
+    # Deduplication check
+    existing_memories = read_tiered_memory(tier)
+    val_str = json.dumps(value) if isinstance(value, dict) else str(value)
+    
+    if "No memories found" not in existing_memories:
+        # Check if the memory payload is effectively identical to an existing block
+        if val_str[:150] in existing_memories:
+             return f"Memory skipped (duplicate): Highly similar data already exists in tier '{tier}'."
+             
     tags = ["rlm_memory", f"tier:{tier}"]
     playbook_id = os.environ.get("PLAYBOOK_ID")
     args = json.dumps({"playbook_id": playbook_id, "key": data_key, "value": value, "tags": tags})

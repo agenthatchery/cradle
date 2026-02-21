@@ -30,6 +30,11 @@ def log_reflection(content: str) -> str:
     Useful for retaining context across autonomous cycles.
     """
     try:
+        # Deduplication check
+        recent = read_reflections(5)
+        if content.strip() in recent:
+            return "Reflection skipped: Exact text already exists in recent memory."
+            
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         # Ensure UTC timezone and ISO format
