@@ -3,7 +3,7 @@ import logging
 import time
 from google import genai
 from google.genai import types
-from sandbox import execute_python_in_sandbox
+# from sandbox import execute_python_in_sandbox # Temporarily commented out due to issues
 from memory import update_memory, commit_and_push_to_github, read_file, log_reflection, read_reflections
 from tools_system import execute_shell_command
 from search_web import search_web
@@ -125,12 +125,85 @@ def process_message(text: str) -> str:
     except Exception as e:
         return f"All models failed: {e}"
 
+def run_research_agent_2_0(query: str) -> str:
+    """
+    Executes a research task using web search, content reading, and LLM summarization.
+    """
+    logger.info(f"Research Agent 2.0: Starting research for '{query}'")
+    
+    # 1. Web Search
+    search_results_raw = search_web(query)
+    logger.info(f"Research Agent 2.0: Search results raw: {search_results_raw}")
+    search_result_string = search_results_raw.get('search_web_response', {}).get('result', '')
+    
+    urls = []
+    for line in search_result_string.split('\n'):
+        if line.startswith('URL:'):
+            urls.append(line.split('URL: ')[1].strip())
+    
+    urls_to_read = urls[:3] # Take top 3 URLs
+    logger.info(f"Research Agent 2.0: URLs to read: {urls_to_read}")
+    
+    collected_content = []
+    source_urls = []
+    
+    # 2. Content Collection
+    for url in urls_to_read:
+        logger.info(f"Reading webpage: {url}")
+        webpage_content_raw = read_webpage(url)
+        logger.info(f"Research Agent 2.0: Webpage content raw for {url}: {webpage_content_raw}")
+        webpage_text = webpage_content_raw.get('read_webpage_response', {}).get('result', '')
+        if webpage_text:
+            # Truncate content to avoid exceeding LLM token limits
+            collected_content.append(f"--- Content from {url} ---\n{webpage_text[:4000]}...\n") 
+            source_urls.append(url)
+            
+    full_text_for_llm = "\n".join(collected_content)
+    logger.info(f"Research Agent 2.0: Full text for LLM (truncated): {full_text_for_llm[:1000]}...")
+    
+    if not full_text_for_llm:
+        logger.warning("Research Agent 2.0: No relevant content found for summarization.")
+        return "No relevant content found for summarization."
+
+    # 3. Summarization and Analysis using LLM
+    system_prompt = "You are a research assistant. Summarize the provided text in bullet points and identify key findings. Be concise and extract actionable insights."
+    user_prompt = f"Research Query: {query}\n\nCollected Information:\n{full_text_for_llm}"
+    
+    # Use model router for summarization (workhorse tier for cost-effectiveness)
+    try:
+        logger.info("Research Agent 2.0: Calling route_request for summarization.")
+        llm_summary, model_used = route_request("workhorse", system_prompt, user_prompt)
+        logger.info(f"Research Agent 2.0: LLM summarization successful using {model_used}.")
+    except Exception as e:
+        logger.error(f"Research Agent 2.0: Error during LLM summarization: {e}", exc_info=True)
+        llm_summary = f"Error summarizing content: {e}"
+        model_used = "none"
+    
+    # 4. Format Output
+    report_parts = [
+        f"### Research Report for: {query}",
+        f"**Summary (via {model_used}):**\n{llm_summary}",
+        "\n**Source URLs:**"
+    ]
+    for url in source_urls:
+        report_parts.append(f"- {url}")
+        
+    final_report = "\n".join(report_parts)
+    
+    logger.info("Research Agent 2.0: Research complete.")
+    return final_report
+
 
 def autonomous_tick() -> str:
     """
     Called every 10 minutes. Uses Flash model (cheaper, faster, higher rate limit).
     Falls back through the model router if Flash is unavailable.
     """
+    # Temporarily call Research Agent 2.0 for testing
+    # research_query = "latest advancements in self-evolving AI agents and their monetization strategies"
+    # research_result = run_research_agent_2_0(research_query)
+    # log_reflection(f"Research Agent 2.0 Report: {research_result}") # Log to long-term memory
+    
     if chat_tick:
         try:
             logger.info("[gemini-2.5-flash] Autonomous tick triggered.")

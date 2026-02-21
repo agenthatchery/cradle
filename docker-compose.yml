@@ -15,6 +15,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/app
+      - researcher-data:/app/data # Mount volume for cradle_debug.log
     healthcheck:
       test: ["CMD", "python", "-c", "print('ok')"]
       interval: 30s
