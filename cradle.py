@@ -38,6 +38,9 @@ ALLOWED_USER = os.environ.get("ALLOWED_TELEGRAM_USER", "")
 def self_update():
     """Pull latest code from GitHub. If files changed, restart the process."""
     try:
+        # Prevent 'dubious ownership' errors inside the Docker container
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], check=False)
+        
         old_hash = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd="/app"
         ).decode().strip()
