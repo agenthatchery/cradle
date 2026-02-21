@@ -29,7 +29,7 @@ def execute_python_in_sandbox(script: str) -> str:
             working_dir="/app",
             auto_remove=True,
             mem_limit="512m",
-            cpus=0.5,
+            # Removed cpus=0.5 to fix 'unexpected keyword argument cpus' error
             detach=True,
             stdout=True,
             stderr=True
