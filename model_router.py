@@ -242,9 +242,8 @@ def route_request(tier, system_prompt, user_prompt, max_retries=2):
             except Exception as e:
                 error_str = str(e)
                 if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "rate" in error_str.lower():
-                    wait = min(30, (2 ** attempt) * 5)
-                    logger.warning(f"[{model_name}] Rate limited, waiting {wait}s...")
-                    time.sleep(wait)
+                    logger.warning(f"[{model_name}] Rate limited. Instantly falling back to next provider...")
+                    break
                 else:
                     logger.error(f"[{model_name}] Error: {error_str}")
                     break

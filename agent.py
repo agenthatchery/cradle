@@ -91,12 +91,11 @@ def _send_with_retry(chat, text: str, max_retries: int = 3) -> str:
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                wait_time = min(60, (2 ** attempt) * 10)
-                logger.warning(f"Rate limited (attempt {attempt+1}/{max_retries}). Waiting {wait_time}s...")
-                time.sleep(wait_time)
+                logger.warning(f"Rate limited on primary chat. Triggering fallback chain...")
+                raise Exception(f"RateLimitExhausted: {error_str}")
             else:
                 raise e
-    return f"Rate limited after {max_retries} retries. Will try again next tick."
+    raise Exception("Max retries exceeded")
 
 # ===== AUTO-HEALING DECORATOR =====
 import functools
