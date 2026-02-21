@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 # Parallel executor for background tasks
 task_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+active_tasks = set()  # Thread-safe task locking
+import threading
+active_tasks_lock = threading.Lock()
 
 def execute_single_task(task_id, goal, val):
     """Worker function to execute a single task in a thread."""
@@ -17,8 +20,8 @@ def execute_single_task(task_id, goal, val):
         logger.info(f"Heartbeat [Task {task_id}]: Starting...")
         
         # 3. Execute the task via Agent
-        # We use agent.process_message as the task engine
-        result = agent.process_message(f"BACKGROUND TASK EXECUTION (ID: {task_id}): {goal}")
+        # Isolate the chat context for background tasks
+        result = agent.process_message(f"BACKGROUND TASK EXECUTION (ID: {task_id}): {goal}", use_global_chat=False)
         
         # 4. Mark as completed
         val["status"] = "completed"
@@ -45,6 +48,9 @@ def execute_single_task(task_id, goal, val):
             "value": val,
             "tags": ["failed_task", f"id:{task_id}"]
         }))
+    finally:
+        with active_tasks_lock:
+            active_tasks.discard(task_id)
 
 def heartbeat_step():
     """
@@ -85,9 +91,17 @@ def heartbeat_step():
         # Sort by priority ascending
         task_list.sort(key=lambda x: x[0])
         
+        dispatched_this_cycle = 0
         for priority, val in task_list:
+            if dispatched_this_cycle >= 5: break # Throttle per cycle
+            
             task_id = val.get("id")
             goal = val.get("goal")
+            
+            with active_tasks_lock:
+                if task_id in active_tasks:
+                    continue
+                active_tasks.add(task_id)
             
             val["status"] = "processing"
             val["started_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -101,6 +115,7 @@ def heartbeat_step():
             # Dispatch to thread pool
             task_executor.submit(execute_single_task, task_id, goal, val)
             logger.info(f"Heartbeat: Dispatched Task {task_id} (Priority {priority})")
+            dispatched_this_cycle += 1
             
     except Exception as e:
         logger.error(f"Heartbeat processing error: {e}")

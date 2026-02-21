@@ -158,27 +158,52 @@ def auto_heal(func):
 
 
 @auto_heal
-def process_message(text: str) -> str:
+def process_message(text: str, use_global_chat: bool = True) -> str:
     """
     Sends the user message to the best available model.
     If using fallback models, parses and executes tool calls manually.
     """
+    # Use global session or create a fresh one for isolation
+    target_chat = chat_user if use_global_chat else None
+    
     # Try primary (Pro) chat first
-    if chat_user:
+    if target_chat or (not use_global_chat and MODEL_USER):
         try:
-            logger.info(f"[{MODEL_USER}] Processing user message...")
-            return _send_with_retry(chat_user, text)
+            current_chat = target_chat
+            if not current_chat:
+                # Create a fresh isolated chat session
+                config = types.GenerateContentConfig(
+                    system_instruction=get_core_prompt(),
+                    temperature=0.7,
+                    tools=my_tools,
+                )
+                current_chat = client.chats.create(model=MODEL_USER, config=config)
+            
+            logger.info(f"[{MODEL_USER}] Processing message (isolated={not use_global_chat})...")
+            return _send_with_retry(current_chat, text)
         except Exception as e:
             logger.error(f"[{MODEL_USER}] Failed: {e}")
-            # Fall through to flash
+            # Fall through to flash fallback
     
     # Fallback to Flash
-    if chat_tick:
+    target_tick = chat_tick if use_global_chat else None
+    if target_tick or (not use_global_chat):
         try:
-            logger.info("[gemini-2.5-flash] Falling back for user message...")
-            return _send_with_retry(chat_tick, text)
+            current_tick = target_tick
+            if not current_tick:
+                # Fresh flash session for isolated background work
+                config = types.GenerateContentConfig(
+                    system_instruction=get_core_prompt(),
+                    temperature=0.7,
+                    tools=my_tools,
+                )
+                current_tick = client.chats.create(model="gemini-3-flash-preview", config=config)
+                
+            logger.info("[Flash] Processing message (isolated)...")
+            return _send_with_retry(current_tick, text)
         except Exception as e:
             logger.error(f"[Flash fallback] Failed: {e}")
+            # Fall through to router
             # Fall through to router
     
     # Last resort: use model router (manual tool parsing)
