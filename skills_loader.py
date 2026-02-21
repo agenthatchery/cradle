@@ -30,12 +30,13 @@ def load_skills():
         ('tools_system', 'execute_shell_command'),
         ('memory', ['update_memory', 'read_file', 'log_reflection', 'read_reflections', 'commit_and_push_to_github']),
         ('github_tools', ['create_github_repo', 'create_github_pr']),
-        ('agentplaybooks_tools', ['manage_playbooks', 'playbook_memory']),
+        ('agentplaybooks_tools', ['manage_playbooks', 'playbook_memory', 'store_tiered_memory', 'read_tiered_memory', 'update_canvas']),
         ('tasks_skill', ['enqueue_task', 'list_tasks']),
         ('agent', 'check_model_router'),
         ('benchmark', 'benchmark_models'),
         ('headless_browser', 'headless_browse'),
-        ('mcp_discovery', 'search_mcp_servers')
+        ('mcp_discovery', 'search_mcp_servers'),
+        ('swarm', 'dispatch_swarm')
     ]
     
     for module_name, func_names in base_imports:

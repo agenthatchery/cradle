@@ -2,6 +2,9 @@ import os
 import urllib.request
 import urllib.parse
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # AgentPlaybooks MCP Management Client
 # Provides the Cradle agent with full CRUD access to AgentPlaybooks.ai:
@@ -57,15 +60,20 @@ def _mcp_request(endpoint: str, method: str, tool_name: str, arguments: dict, ap
 
 def manage_playbooks(tool_name: str, arguments: str) -> str:
     """
-    Manage playbooks on AgentPlaybooks.ai. This is your external brain management system.
+    Manage playbooks and skills on AgentPlaybooks.ai. This is your external brain management system.
     
     Available tool_name values:
     - list_playbooks: List all your playbooks. arguments: {}
     - create_playbook: Create a new playbook. arguments: {"name": "...", "description": "...", "visibility": "public"}
+    - update_playbook: Update playbook metadata. arguments: {"playbook_id": "uuid", "name": "...", "description": "..."}
     - get_playbook: Get playbook details. arguments: {"playbook_id": "uuid"}
-    - create_skill: Add a skill. arguments: {"playbook_id": "uuid", "name": "...", "description": "..."}
+    - create_skill: Add a skill. arguments: {"playbook_id": "uuid", "name": "...", "description": "...", "code": "...", "input_schema": {...}}
+    - update_skill: Update an existing skill. arguments: {"skill_id": "uuid", "name": "...", "code": "..."}
+    - delete_skill: Remove a skill. arguments: {"skill_id": "uuid"}
     - list_skills: List skills. arguments: {"playbook_id": "uuid"}
-    - write_memory: Store memory. arguments: {"playbook_id": "uuid", "key": "...", "value": {...}, "tags": [...], "description": "..."}
+    - list_skill_versions: List versions of a skill. arguments: {"skill_id": "uuid"}
+    - rollback_skill: Rollback a skill to a previous version. arguments: {"skill_id": "uuid", "version_id": "uuid"}
+    - write_memory: Store memory. arguments: {"playbook_id": "uuid", "key": "...", "value": {...}, "tags": [...]}
     - read_memory: Read memory. arguments: {"playbook_id": "uuid", "key": "..."}
     - search_memory: Search. arguments: {"playbook_id": "uuid", "search": "...", "tags": [...]}
     - delete_memory: Delete. arguments: {"playbook_id": "uuid", "key": "..."}
@@ -95,11 +103,12 @@ def playbook_memory(tool_name: str, arguments: str) -> str:
     - search_memory: Search memories. arguments: {"search": "...", "tags": [...]}
     - list_skills: List all skills. arguments: {}
     - get_skill: Get skill details. arguments: {"skill_id": "..."}
+    - update_skill: Update skill. arguments: {"skill_id": "...", "name": "...", "code": "..."}
     
     The arguments parameter must be a valid JSON string.
     """
     guid = os.environ.get("PLAYBOOK_GUID")
-    api_key = os.environ.get("PLAYBOOK_API_KEY")
+    api_key = os.environ.get("PLAYBOOK_API_KEY") or os.environ.get("AGENTPLAYBOOKS_KEY")
     
     if not guid:
         return "Failed: PLAYBOOK_GUID not set. Use manage_playbooks('list_playbooks', '{}') to find your playbook GUID."
@@ -111,3 +120,42 @@ def playbook_memory(tool_name: str, arguments: str) -> str:
     
     key = api_key or ""
     return _mcp_request(f"/api/mcp/{guid}", "tools/call", tool_name, args, key)
+
+# ===== RLM TIERED MEMORY =====
+def store_tiered_memory(data_key: str, value: dict, tier: str = "working") -> str:
+    """
+    Stores memory into one of four RLM (Recursive Language Model) tiers:
+    - working: Short-term scratchpad for current task.
+    - episodic: Logs of past events/ticks.
+    - semantic: Generalized knowledge, facts, project structure.
+    - archival: Deep long-term storage, compressed.
+    """
+    if tier not in ["working", "episodic", "semantic", "archival"]:
+        return "Invalid tier. Must be working, episodic, semantic, or archival."
+        
+    tags = ["rlm_memory", f"tier:{tier}"]
+    playbook_id = os.environ.get("PLAYBOOK_ID")
+    args = json.dumps({"playbook_id": playbook_id, "key": data_key, "value": value, "tags": tags})
+    return manage_playbooks("write_memory", args)
+
+def read_tiered_memory(tier: str = "working") -> str:
+    """Retrieves all memories currently residing in the specified RLM tier."""
+    if tier not in ["working", "episodic", "semantic", "archival"]:
+        return "Invalid tier."
+    playbook_id = os.environ.get("PLAYBOOK_ID")
+    args = json.dumps({"playbook_id": playbook_id, "search": "", "tags": ["rlm_memory", f"tier:{tier}"]})
+    return manage_playbooks("search_memory", args)
+
+def update_canvas(canvas_id: str, content: str) -> str:
+    """
+    Updates a collaborative canvas used to share state between the 
+    main autonomous loop and the Swarm sub-agents.
+    """
+    playbook_id = os.environ.get("PLAYBOOK_ID")
+    args = json.dumps({
+        "playbook_id": playbook_id,
+        "key": f"canvas:{canvas_id}",
+        "value": {"content": content},
+        "tags": ["collaborative_canvas"]
+    })
+    return manage_playbooks("write_memory", args)

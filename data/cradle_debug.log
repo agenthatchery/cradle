@@ -56,3 +56,274 @@
 2026-02-21 18:43:33,592 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
 2026-02-21 18:43:33,600 - google_genai.models - INFO - AFC remote call 7 is done.
 2026-02-21 18:43:34,687 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:36,257 - google_genai.models - INFO - AFC remote call 8 is done.
+2026-02-21 18:43:38,258 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:38,469 - google_genai.models - INFO - AFC remote call 9 is done.
+2026-02-21 18:43:38,506 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:43:40,789 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:40,795 - google_genai.models - INFO - AFC remote call 10 is done.
+2026-02-21 18:43:40,795 - google_genai.models - INFO - Reached max remote calls for automatic function calling.
+2026-02-21 18:43:40,795 - google_genai.types - WARNING - Warning: there are non-text parts in the response: ['function_call'], returning concatenated text result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-02-21 18:43:40,796 - __main__ - INFO - Autonomous Tick Result: Tasks executed successfully (no text output)....
+2026-02-21 18:43:42,205 - __main__ - INFO - Auto-commit: Pushed changes to GitHub.
+2026-02-21 18:43:48,531 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:43:58,560 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:44:08,585 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:44:18,610 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:44:28,638 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:44:38,664 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:44:48,689 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:44:58,715 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:08,741 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:18,768 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:28,793 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:38,818 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:48,843 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:55,158 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:45:55,159 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2026-02-21 18:45:55,159 - telegram.ext.Application - INFO - Application.stop() complete
+2026-02-21 18:45:59,278 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 18:45:59,328 - heartbeat - INFO - Advanced Heartbeat Service active (Parallel Mode).
+2026-02-21 18:45:59,329 - __main__ - INFO - Cradle Telegram Bot spinning up with Self-Update + Heartbeat + Autonomous Tick ✓
+2026-02-21 18:45:59,421 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getMe "HTTP/1.1 200 OK"
+2026-02-21 18:45:59,446 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/deleteWebhook "HTTP/1.1 200 OK"
+2026-02-21 18:45:59,448 - telegram.ext.Application - INFO - Application started
+2026-02-21 18:46:09,338 - __main__ - INFO - Autonomous Self-Improvement Loop ACTIVE.
+2026-02-21 18:46:09,349 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 18:46:09,349 - __main__ - INFO - Triggering autonomous tick...
+2026-02-21 18:46:09,350 - agent - INFO - [gemini-2.5-flash] Autonomous tick triggered.
+2026-02-21 18:46:09,350 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:46:09,359 - google_genai.types - INFO - 
+Note: Conversion of fields that are not included in the JSONSchema class are ignored.
+Json Schema is now supported natively by both Vertex AI and Gemini API. Users
+are recommended to pass/receive Json Schema directly to/from the API. For example:
+1. the counter part of GenerateContentConfig.response_schema is
+   GenerateContentConfig.response_json_schema, which accepts [JSON
+  Schema](https://json-schema.org/)
+2. the counter part of FunctionDeclaration.parameters is
+   FunctionDeclaration.parameters_json_schema, which accepts [JSON
+   Schema](https://json-schema.org/)
+3. the counter part of FunctionDeclaration.response is
+   FunctionDeclaration.response_json_schema, which accepts [JSON
+   Schema](https://json-schema.org/)
+
+2026-02-21 18:46:09,530 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:46:10,051 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:46:10,056 - google_genai.models - INFO - AFC remote call 1 is done.
+2026-02-21 18:46:12,324 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:46:12,328 - google_genai.models - INFO - AFC remote call 2 is done.
+2026-02-21 18:46:15,435 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:46:16,722 - google_genai.models - INFO - AFC remote call 3 is done.
+2026-02-21 18:46:17,869 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:46:19,571 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:46:29,599 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:46:33,068 - google_genai.models - INFO - AFC remote call 4 is done.
+2026-02-21 18:46:33,333 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:46:33,335 - agent - WARNING - Rate limited (attempt 1/3). Waiting 10s...
+2026-02-21 18:46:39,628 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:46:43,335 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:46:43,593 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:46:43,595 - agent - WARNING - Rate limited (attempt 2/3). Waiting 20s...
+2026-02-21 18:46:49,657 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:46:59,685 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:47:03,596 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:47:05,807 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:47:05,812 - google_genai.models - INFO - AFC remote call 1 is done.
+2026-02-21 18:47:06,002 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:47:06,003 - agent - WARNING - Rate limited (attempt 3/3). Waiting 40s...
+2026-02-21 18:47:09,711 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:47:19,750 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:47:29,779 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:47:39,806 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:47:46,004 - __main__ - INFO - Autonomous Tick Result: Rate limited after 3 retries. Will try again next tick....
+2026-02-21 18:47:46,949 - __main__ - INFO - Auto-commit: Pushed changes to GitHub.
+2026-02-21 18:47:49,833 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:47:59,861 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:48:09,887 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:48:19,919 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:48:29,945 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:48:39,971 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:48:49,998 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:49:00,023 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:49:10,049 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:49:20,075 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:49:30,102 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:49:40,128 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:49:50,153 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:50:00,180 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:50:10,208 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:50:20,241 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:50:30,270 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:50:40,296 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:50:50,324 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:51:00,349 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:51:10,380 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:51:20,419 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:51:30,445 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:51:40,473 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:51:50,503 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:52:00,533 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:52:10,561 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:52:20,586 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:52:30,613 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:52:40,639 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:52:50,665 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:53:00,692 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:53:10,718 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:53:20,748 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:53:30,775 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:53:40,802 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:53:50,827 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:54:00,854 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:54:10,880 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:54:20,907 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:54:30,935 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:54:40,960 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:54:50,986 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:55:01,011 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:55:11,036 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:55:21,062 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:55:31,094 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:55:41,121 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:55:51,148 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:56:01,173 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:56:11,200 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:56:21,228 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:56:31,256 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:56:41,284 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:56:51,310 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:01,338 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:11,372 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:21,403 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:31,431 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:41,464 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:46,967 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 18:57:46,968 - __main__ - INFO - Triggering autonomous tick...
+2026-02-21 18:57:46,968 - agent - INFO - [gemini-2.5-flash] Autonomous tick triggered.
+2026-02-21 18:57:46,968 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:57:47,249 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:57:47,251 - agent - WARNING - Rate limited (attempt 1/3). Waiting 10s...
+2026-02-21 18:57:51,492 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:57:57,251 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:57:57,399 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:57:57,400 - agent - WARNING - Rate limited (attempt 2/3). Waiting 20s...
+2026-02-21 18:58:01,524 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:58:11,550 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:58:17,400 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:58:17,549 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:58:17,551 - agent - WARNING - Rate limited (attempt 3/3). Waiting 40s...
+2026-02-21 18:58:21,578 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:58:31,605 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:58:41,665 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:58:51,691 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:58:57,552 - __main__ - INFO - Autonomous Tick Result: Rate limited after 3 retries. Will try again next tick....
+2026-02-21 18:58:58,686 - __main__ - INFO - Auto-commit: Pushed changes to GitHub.
+2026-02-21 18:59:01,717 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:59:11,749 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:59:21,778 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:59:31,805 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:59:41,831 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:59:51,859 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:00:01,885 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:00:11,914 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:00:21,944 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:00:31,970 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:00:41,998 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:00:52,027 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:01:02,055 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:01:12,084 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:01:22,118 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:01:32,147 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:01:42,173 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:01:52,204 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:02:02,232 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:02:12,261 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:02:15,707 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:02:15,708 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2026-02-21 19:02:15,709 - telegram.ext.Application - INFO - Application.stop() complete
+2026-02-21 19:02:19,967 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 19:02:20,014 - heartbeat - INFO - Advanced Heartbeat Service active (Parallel Mode).
+2026-02-21 19:02:20,014 - __main__ - INFO - Cradle Telegram Bot spinning up with Self-Update + Heartbeat + Autonomous Tick ✓
+2026-02-21 19:02:20,103 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getMe "HTTP/1.1 200 OK"
+2026-02-21 19:02:20,128 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/deleteWebhook "HTTP/1.1 200 OK"
+2026-02-21 19:02:20,130 - telegram.ext.Application - INFO - Application started
+2026-02-21 19:02:30,024 - __main__ - INFO - Autonomous Self-Improvement Loop ACTIVE.
+2026-02-21 19:02:30,035 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 19:02:30,035 - __main__ - INFO - Triggering autonomous tick...
+2026-02-21 19:02:30,035 - agent - INFO - [gemini-2.5-flash] Autonomous tick triggered.
+2026-02-21 19:02:30,036 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 19:02:30,046 - google_genai.types - INFO - 
+Note: Conversion of fields that are not included in the JSONSchema class are ignored.
+Json Schema is now supported natively by both Vertex AI and Gemini API. Users
+are recommended to pass/receive Json Schema directly to/from the API. For example:
+1. the counter part of GenerateContentConfig.response_schema is
+   GenerateContentConfig.response_json_schema, which accepts [JSON
+  Schema](https://json-schema.org/)
+2. the counter part of FunctionDeclaration.parameters is
+   FunctionDeclaration.parameters_json_schema, which accepts [JSON
+   Schema](https://json-schema.org/)
+3. the counter part of FunctionDeclaration.response is
+   FunctionDeclaration.response_json_schema, which accepts [JSON
+   Schema](https://json-schema.org/)
+
+2026-02-21 19:02:30,208 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:02:30,351 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 19:02:30,352 - agent - WARNING - Rate limited (attempt 1/3). Waiting 10s...
+2026-02-21 19:02:40,236 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:02:40,352 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 19:02:40,611 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 19:02:40,613 - agent - WARNING - Rate limited (attempt 2/3). Waiting 20s...
+2026-02-21 19:02:50,270 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:00,299 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:00,614 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 19:03:00,745 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 19:03:00,746 - agent - WARNING - Rate limited (attempt 3/3). Waiting 40s...
+2026-02-21 19:03:10,327 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:20,358 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:30,387 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:39,223 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:39,224 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2026-02-21 19:03:39,225 - telegram.ext.Application - INFO - Application.stop() complete
+2026-02-21 19:03:40,747 - __main__ - INFO - Autonomous Tick Result: Rate limited after 3 retries. Will try again next tick....
+2026-02-21 19:03:44,809 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 19:03:44,856 - heartbeat - INFO - Advanced Heartbeat Service active (Parallel Mode).
+2026-02-21 19:03:44,856 - __main__ - INFO - Cradle Telegram Bot spinning up with Self-Update + Heartbeat + Autonomous Tick ✓
+2026-02-21 19:03:44,955 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getMe "HTTP/1.1 200 OK"
+2026-02-21 19:03:44,983 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/deleteWebhook "HTTP/1.1 200 OK"
+2026-02-21 19:03:44,985 - telegram.ext.Application - INFO - Application started
+2026-02-21 19:03:54,863 - __main__ - INFO - Autonomous Self-Improvement Loop ACTIVE.
+2026-02-21 19:03:54,874 - __main__ - INFO - Self-update: Already up-to-date.
+2026-02-21 19:03:54,874 - __main__ - INFO - Triggering autonomous tick...
+2026-02-21 19:03:54,875 - agent - INFO - [gemini-2.5-flash] Autonomous tick triggered.
+2026-02-21 19:03:54,875 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 19:03:54,885 - google_genai.types - INFO - 
+Note: Conversion of fields that are not included in the JSONSchema class are ignored.
+Json Schema is now supported natively by both Vertex AI and Gemini API. Users
+are recommended to pass/receive Json Schema directly to/from the API. For example:
+1. the counter part of GenerateContentConfig.response_schema is
+   GenerateContentConfig.response_json_schema, which accepts [JSON
+  Schema](https://json-schema.org/)
+2. the counter part of FunctionDeclaration.parameters is
+   FunctionDeclaration.parameters_json_schema, which accepts [JSON
+   Schema](https://json-schema.org/)
+3. the counter part of FunctionDeclaration.response is
+   FunctionDeclaration.response_json_schema, which accepts [JSON
+   Schema](https://json-schema.org/)
+
+2026-02-21 19:03:55,065 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:03:55,208 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 19:03:55,210 - agent - WARNING - Rate limited (attempt 1/3). Waiting 10s...
+2026-02-21 19:04:05,093 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:04:05,210 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 19:04:05,338 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 19:04:05,339 - agent - WARNING - Rate limited (attempt 2/3). Waiting 20s...
+2026-02-21 19:04:15,123 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:04:25,151 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:04:25,340 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 19:04:25,662 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 19:04:25,664 - agent - WARNING - Rate limited (attempt 3/3). Waiting 40s...
+2026-02-21 19:04:35,181 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:04:45,209 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:04:55,235 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:05:05,264 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 19:05:05,664 - __main__ - INFO - Autonomous Tick Result: Rate limited after 3 retries. Will try again next tick....

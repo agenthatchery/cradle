@@ -84,28 +84,29 @@ def read_file(filename: str) -> str:
 
 def commit_and_push_to_github(commit_message: str, branch_name: str = "main") -> str:
     """
-    Commits all local changes and pushes to the specified branch on GitHub.
-    This effectively deploys your mutations.
+    Commits all local changes and pushes directly to the main branch.
+    (Note: branch_name argument is accepted for backward compatibility with 
+    older agent prompts, but is ignored. We use trunk-based development.)
     """
+    import subprocess
     try:
-        # Assumes the working directory is already a git repository linked to remote origin
-        repo = Repo('.')
-        repo.git.add(A=True)
-        repo.index.commit(commit_message)
-        
-        # Ensure branch exists locally
-        if branch_name not in [h.name for h in repo.heads]:
-            repo.create_head(branch_name)
-        
-        # Checkout the branch and push
-        repo.heads[branch_name].checkout()
-        origin = repo.remote(name='origin')
-        origin.push(refspec=f'{branch_name}:{branch_name}')
-        
-        # Go back to main if we moved
-        if branch_name != "main" and "main" in [h.name for h in repo.heads]:
+        # We invoke the safe_commit script to ensure trunk-based development and auto-pulls
+        script_path = "/app/scripts/safe_commit.sh"
+        if os.path.exists(script_path):
+            result = subprocess.run(["bash", script_path], capture_output=True, text=True)
+            if result.returncode == 0:
+                return f"Successfully committed and pushed to main: {result.stdout}"
+            else:
+                return f"safe_commit.sh failed: {result.stderr}"
+        else:
+            # Fallback if script missing
+            repo = Repo('.')
+            repo.git.add(A=True)
+            repo.index.commit(commit_message)
             repo.heads["main"].checkout()
+            origin = repo.remote(name='origin')
+            origin.push("main:main")
+            return "Successfully committed and pushed directly to main."
             
-        return f"Successfully committed and pushed to {branch_name}"
     except Exception as e:
          return f"Failed to commit and push: {str(e)}"

@@ -1,28 +1,28 @@
 import json
 import uuid
 import datetime
+import os
 from agentplaybooks_tools import manage_playbooks
 
-def enqueue_task(goal: str, priority: int = 5) -> str:
+def enqueue_task(goal: str, priority: int = 5, parent_task_id: str = None, assigned_agent: str = None) -> str:
     """
     Adds a new task to the background execution queue.
-    The heartbeat processor will pick this up according to priority.
-    
-    Arguments:
-    - goal: The natural language description of what the agent should do.
-    - priority: 1 (highest) to 10 (lowest). Default is 5.
     """
     task_id = str(uuid.uuid4())[:8]
     task_obj = {
         "id": task_id,
         "goal": goal,
-        "priority": int(priority),
+        "priority": priority,
         "status": "pending",
+        "parent_task_id": parent_task_id,
+        "assigned_agent": assigned_agent,
         "created_at": datetime.datetime.now().isoformat(),
         "log": []
     }
     
+    playbook_id = os.environ.get("PLAYBOOK_ID")
     args = json.dumps({
+        "playbook_id": playbook_id,
         "key": f"task:{task_id}",
         "value": task_obj,
         "tags": ["pending_task", f"priority:{priority}"]
@@ -37,10 +37,11 @@ def enqueue_task(goal: str, priority: int = 5) -> str:
 def list_tasks(status: str = "pending") -> str:
     """
     Lists tasks from the background queue filtered by status.
-    Available statuses: pending, processing, completed, failed.
     """
     tag = f"{status}_task"
+    playbook_id = os.environ.get("PLAYBOOK_ID")
     args = json.dumps({
+        "playbook_id": playbook_id,
         "search": "",
         "tags": [tag]
     })
