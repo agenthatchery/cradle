@@ -47,7 +47,7 @@ logger.info(f"Loaded {len(my_tools)} unique tools: {[t.__name__ for t in my_tool
 
 # ===== MODEL TIERING =====
 MODEL_USER = None
-for model_name in ["gemini-3.1-pro", "gemini-2.5-pro"]:
+for model_name in ["gemini-3.1-pro", "gemini-3.0-pro", "gemini-2.5-pro"]:
     try:
         config_user = types.GenerateContentConfig(
             system_instruction=get_core_prompt(),
@@ -63,17 +63,22 @@ for model_name in ["gemini-3.1-pro", "gemini-2.5-pro"]:
         chat_user = None
 
 # Flash for autonomous ticks (always available, cheap)
-try:
-    config_tick = types.GenerateContentConfig(
-        system_instruction=get_core_prompt(),
-        temperature=0.7,
-        tools=my_tools,
-    )
-    chat_tick = client.chats.create(model="gemini-2.5-flash", config=config_tick)
-    logger.info("Tick chat initialized with gemini-2.5-flash")
-except Exception as e:
-    logger.error(f"Failed to init Flash chat: {e}")
-    chat_tick = None
+chat_tick = None
+for flash_model in ["gemini-3.0-flash", "gemini-2.5-flash"]:
+    try:
+        config_tick = types.GenerateContentConfig(
+            system_instruction=get_core_prompt(),
+            temperature=0.7,
+            tools=my_tools,
+        )
+        chat_tick = client.chats.create(model=flash_model, config=config_tick)
+        logger.info(f"Tick chat initialized with {flash_model}")
+        break  # Successfully initialized
+    except Exception as e:
+        logger.warning(f"Failed to init {flash_model} chat: {e}")
+
+if not chat_tick:
+    logger.error("Failed to init any Flash chat.")
 
 
 def _send_with_retry(chat, text: str, max_retries: int = 3) -> str:

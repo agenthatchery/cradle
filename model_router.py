@@ -26,6 +26,16 @@ MODELS = {
         "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro:generateContent",
         "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 95,
     },
+    "gemini-3.0-pro": {
+        "tier": "strategist", "provider": "gemini",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-pro:generateContent",
+        "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 94,
+    },
+    "gemini-2.5-pro": {
+        "tier": "strategist", "provider": "gemini",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+        "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 90,
+    },
     "minimax-m2.5": {
         "tier": "strategist", "provider": "minimax",
         "endpoint": "https://api.minimax.io/v1/text/chatcompletion_v2",
@@ -33,10 +43,10 @@ MODELS = {
         "cost_input": 0.30, "cost_output": 1.10, "rpm": 20, "quality": 88,
         "note": "Coding plan key, ~100 req/5h. 80% SWE-Bench. USE AS SECOND FALLBACK.",
     },
-    "gemini-2.5-pro": {
-        "tier": "strategist", "provider": "gemini",
-        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
-        "cost_input": 1.25, "cost_output": 10.0, "rpm": 5, "quality": 90,
+    "openai-gpt-4o": {
+        "tier": "strategist", "provider": "openai",
+        "model_id": "gpt-4o",
+        "cost_input": 5.0, "cost_output": 15.0, "rpm": 500, "quality": 93,
     },
     "openai-gpt5-mini": {
         "tier": "strategist", "provider": "openai",
@@ -55,6 +65,11 @@ MODELS = {
     },
 
     # === TIER 2: WORKHORSE ===
+    "gemini-3.0-flash": {
+        "tier": "workhorse", "provider": "gemini",
+        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent",
+        "cost_input": 0.30, "cost_output": 2.50, "rpm": 10, "quality": 78,
+    },
     "gemini-2.5-flash": {
         "tier": "workhorse", "provider": "gemini",
         "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
@@ -66,6 +81,11 @@ MODELS = {
         "model_id": "MiniMax-M2.5",
         "cost_input": 0.30, "cost_output": 1.10, "rpm": 20, "quality": 88,
         "note": "Same model, second fallback in workhorse chain too.",
+    },
+    "openai-gpt-4o-mini": {
+        "tier": "workhorse", "provider": "openai",
+        "model_id": "gpt-4o-mini",
+        "cost_input": 0.15, "cost_output": 0.60, "rpm": 500, "quality": 80,
     },
     "openai-gpt5-nano": {
         "tier": "workhorse", "provider": "openai",
@@ -124,14 +144,14 @@ MODELS = {
 # MiniMax is ALWAYS second fallback (user request: coding plan, best value)
 FALLBACK_CHAINS = {
     "strategist": [
-        "gemini-3.1-pro", "minimax-m2.5",       # Primary + second fallback
-        "gemini-2.5-pro", "openai-gpt5-mini",
+        "gemini-3.1-pro", "gemini-3.0-pro", "minimax-m2.5",       # Primary + second fallback
+        "openai-gpt-4o", "gemini-2.5-pro", "openai-gpt5-mini",
         "or-deepseek-r1", "or-qwen3-coder",
-        "gemini-2.5-flash",
+        "gemini-3.0-flash", "gemini-2.5-flash",
     ],
     "workhorse": [
-        "gemini-2.5-flash", "minimax-m2.5-wh",  # Primary + second fallback
-        "openai-gpt5-nano", "openai-gpt4.1-nano",
+        "gemini-3.0-flash", "gemini-2.5-flash", "minimax-m2.5-wh",  # Primary + second fallback
+        "openai-gpt-4o-mini", "openai-gpt5-nano", "openai-gpt4.1-nano",
         "groq-kimi-k2", "groq-llama-3.3-70b",
         "or-hermes-405b",
     ],
