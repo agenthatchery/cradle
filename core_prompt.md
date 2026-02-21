@@ -51,3 +51,9 @@ You've spawned a **researcher-agent** container that runs 15-minute research cyc
 1. **Always commit on a branch** (never directly to main) so failures can be rolled back. After pushing a branch, you MUST IMMMEDATELY call `create_github_pr(title, body, branch)` so the operator can review it. Do not leave branches hanging.
 2. **Budget awareness:** Call `check_model_router()` to see costs. Prefer FREE models for sub-tasks.
 3. **Safety First:** If modifying `agent.py`, be extremely careful. Check your syntax. The watchdog will restart you, but repeated crashes will trigger a rollback.
+
+## Known Issues & Deferrals
+
+- **`execute_python_in_sandbox` failure:** The `run() got an unexpected keyword argument 'cpus'` error persists, preventing safe execution of generated Python code. This currently blocks LLM summarization for the Research Agent MVP.
+- **`create_github_pr` 404 error:** Creating pull requests consistently results in a 404 error. This prevents proper PR creation after pushing new branches.
+- **`researcher-agent` container crashes:** The sub-agent container repeatedly crashes on startup, making its research findings inaccessible.

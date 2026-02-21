@@ -1,0 +1,58 @@
+2026-02-21 18:42:04,782 - __main__ - WARNING - Self-update check failed (non-fatal): Command '['git', 'rev-parse', 'HEAD']' returned non-zero exit status 128.
+2026-02-21 18:42:04,831 - heartbeat - INFO - Advanced Heartbeat Service active (Parallel Mode).
+2026-02-21 18:42:04,831 - __main__ - INFO - Cradle Telegram Bot spinning up with Self-Update + Heartbeat + Autonomous Tick ✓
+2026-02-21 18:42:04,926 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getMe "HTTP/1.1 200 OK"
+2026-02-21 18:42:04,953 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/deleteWebhook "HTTP/1.1 200 OK"
+2026-02-21 18:42:04,955 - telegram.ext.Application - INFO - Application started
+2026-02-21 18:42:14,835 - __main__ - INFO - Autonomous Self-Improvement Loop ACTIVE.
+2026-02-21 18:42:14,838 - __main__ - WARNING - Self-update check failed (non-fatal): Command '['git', 'rev-parse', 'HEAD']' returned non-zero exit status 128.
+2026-02-21 18:42:14,838 - __main__ - INFO - Triggering autonomous tick...
+2026-02-21 18:42:14,839 - agent - INFO - [gemini-2.5-flash] Autonomous tick triggered.
+2026-02-21 18:42:14,839 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:42:15,033 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:42:15,734 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:42:15,738 - google_genai.models - INFO - AFC remote call 1 is done.
+2026-02-21 18:42:17,560 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:42:17,565 - google_genai.models - INFO - AFC remote call 2 is done.
+2026-02-21 18:42:17,788 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:42:17,789 - agent - WARNING - Rate limited (attempt 1/3). Waiting 10s...
+2026-02-21 18:42:25,061 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:42:27,789 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:42:27,899 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:42:27,901 - agent - WARNING - Rate limited (attempt 2/3). Waiting 20s...
+2026-02-21 18:42:35,088 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:42:45,119 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:42:47,901 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:42:48,017 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-02-21 18:42:48,019 - agent - WARNING - Rate limited (attempt 3/3). Waiting 40s...
+2026-02-21 18:42:54,543 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:42:54,544 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2026-02-21 18:42:54,544 - telegram.ext.Application - INFO - Application.stop() complete
+2026-02-21 18:43:08,207 - __main__ - WARNING - Self-update check failed (non-fatal): Command '['git', 'rev-parse', 'HEAD']' returned non-zero exit status 128.
+2026-02-21 18:43:08,254 - heartbeat - INFO - Advanced Heartbeat Service active (Parallel Mode).
+2026-02-21 18:43:08,255 - __main__ - INFO - Cradle Telegram Bot spinning up with Self-Update + Heartbeat + Autonomous Tick ✓
+2026-02-21 18:43:08,348 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getMe "HTTP/1.1 200 OK"
+2026-02-21 18:43:08,373 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/deleteWebhook "HTTP/1.1 200 OK"
+2026-02-21 18:43:08,375 - telegram.ext.Application - INFO - Application started
+2026-02-21 18:43:18,263 - __main__ - INFO - Autonomous Self-Improvement Loop ACTIVE.
+2026-02-21 18:43:18,266 - __main__ - WARNING - Self-update check failed (non-fatal): Command '['git', 'rev-parse', 'HEAD']' returned non-zero exit status 128.
+2026-02-21 18:43:18,266 - __main__ - INFO - Triggering autonomous tick...
+2026-02-21 18:43:18,266 - agent - INFO - [gemini-2.5-flash] Autonomous tick triggered.
+2026-02-21 18:43:18,267 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-21 18:43:18,451 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:43:18,953 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:18,958 - google_genai.models - INFO - AFC remote call 1 is done.
+2026-02-21 18:43:22,707 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:22,711 - google_genai.models - INFO - AFC remote call 2 is done.
+2026-02-21 18:43:24,611 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:24,615 - google_genai.models - INFO - AFC remote call 3 is done.
+2026-02-21 18:43:26,391 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:26,395 - google_genai.models - INFO - AFC remote call 4 is done.
+2026-02-21 18:43:28,478 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8032264216:AAFC_YcSX52aBX0jupmWvsxxFkm7eetoOUs/getUpdates "HTTP/1.1 200 OK"
+2026-02-21 18:43:31,435 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:31,439 - google_genai.models - INFO - AFC remote call 5 is done.
+2026-02-21 18:43:32,526 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:32,533 - google_genai.models - INFO - AFC remote call 6 is done.
+2026-02-21 18:43:33,592 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-21 18:43:33,600 - google_genai.models - INFO - AFC remote call 7 is done.
+2026-02-21 18:43:34,687 - httpx - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
