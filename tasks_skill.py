@@ -64,10 +64,22 @@ def list_tasks(status: str = "pending") -> str:
             return f"No tasks found with status: {status}"
             
         summary = [f"--- {status.upper()} TASKS ---"]
+        seen_goals = set()
         for t in tasks:
             v = t.get("value", {})
-            if isinstance(v, str): v = json.loads(v)
-            summary.append(f"[{v.get('id')}] Priority: {v.get('priority')} | Goal: {v.get('goal')}")
+            if isinstance(v, str):
+                try: v = json.loads(v)
+                except: pass
+            
+            goal = v.get("goal")
+            if not goal: continue
+            
+            # Client-side deduplication to handle server-side orphans
+            if goal in seen_goals:
+                continue
+            seen_goals.add(goal)
+            
+            summary.append(f"[{v.get('id', 'unknown')}] Priority: {v.get('priority', '5')} | Goal: {goal}")
             
         return "\n".join(summary)
     except Exception as e:
