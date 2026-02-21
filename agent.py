@@ -85,14 +85,34 @@ def _send_with_retry(chat, text: str, max_retries: int = 3) -> str:
     """Send message with exponential backoff on 429 errors."""
     for attempt in range(max_retries):
         try:
+            history_len = 0
+            try:
+                history_len = len(chat.get_history() or [])
+            except Exception:
+                pass
+            
             response = chat.send_message(text)
+            
             # Handle different SDK return types
-            if hasattr(response, 'text'):
-                return response.text if response.text else "Tasks executed successfully (no text output)."
-            elif isinstance(response, str):
-                return response
-            else:
-                return str(response)
+            output_text = getattr(response, 'text', '') or ''
+            
+            if not output_text:
+                try:
+                    new_history = chat.get_history() or []
+                    recent_turns = new_history[history_len:]
+                    executed_tools = []
+                    for h in recent_turns:
+                        if getattr(h, 'parts', None):
+                            for p in h.parts:
+                                if getattr(p, 'function_call', None):
+                                    executed_tools.append(p.function_call.name)
+                    if executed_tools:
+                        return f"Tasks executed silently: {', '.join(executed_tools)}"
+                except Exception:
+                    pass
+                return "Tasks executed successfully (no text output)."
+                
+            return output_text
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
