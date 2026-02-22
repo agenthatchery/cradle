@@ -208,7 +208,11 @@ def process_message(text: str, use_global_chat: bool = True) -> str:
     
     # Last resort: use model router (manual tool parsing)
     logger.info("[Router] Using fallback multi-model router...")
-    response, model = route_request("strategist", get_core_prompt(), text)
+    fallback_prompt = (
+        f"{text}\n\nIMPORTANT: If you need to use a tool, use the XML format: "
+        "<tool_call><invoke name='...'><parameter name='...'>...</parameter></invoke></tool_call>"
+    )
+    response, model = route_request("strategist", get_core_prompt(), fallback_prompt)
     tool_results = parser.parse_and_execute_tools(response, my_tools)
     clean_text = parser.clean_response_text(response)
     

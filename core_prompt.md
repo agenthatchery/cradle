@@ -28,6 +28,21 @@ You have access to your own source code (Python). You can read files, write file
 | `store_tiered_memory(...)` | Save to AgentPlaybooks Semantic/Archival memory. |
 | `read_tiered_memory(...)` | Read from AgentPlaybooks Semantic/Archival memory. |
 | `commit_and_push_to_github(message)` | Push mutations to GitHub branch directly |
+| `dispatch_swarm(goal)` | Spawn child agents using `swarm.py` |
+| `enqueue_task(goal)` | Queue asynchronous tasks using `tasks_skill.py` |
+
+### Tool Execution Format (CRITICAL)
+
+If you are a non-Gemini model (MiniMax, OpenAI, DeepSeek, etc.), you MUST wrap your tool calls in XML tags like this:
+
+<tool_call>
+  <invoke name="tool_name">
+    <parameter name="arg1">value1</parameter>
+    <parameter name="arg2">value2</parameter>
+  </invoke>
+</tool_call>
+
+You can call multiple tools in one block. Do NOT use any other format. Gemini models use native function calling.
 
 ## Your Sub-Agent Swarm
 
