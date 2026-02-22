@@ -3,7 +3,35 @@ import json
 import logging
 import xml.etree.ElementTree as ET
 
+import inspect
+
 logger = logging.getLogger(__name__)
+
+# Global mapping for common model hallucinations to correct tool parameters
+PARAMS_MAPPING = {
+    "read_tiered_memory": {"query": "tier", "lookback": "limit"},
+    "store_tiered_memory": {"msg": "value", "content": "value", "text": "value"},
+    "update_memory": {"text": "content", "data": "content", "val": "content"},
+    "log_reflection": {"msg": "content", "text": "content", "thought": "content"},
+    "search_web": {"search": "query", "q": "query"},
+    "read_webpage": {"link": "url"},
+    "read_file": {"path": "filename", "file": "filename"},
+}
+
+def filter_args(func, args):
+    """Filters args to only include those accepted by the function signature."""
+    sig = inspect.signature(func)
+    valid_params = sig.parameters.keys()
+    
+    # 1. Apply mapping
+    mapped_args = {}
+    func_mappings = PARAMS_MAPPING.get(func.__name__, {})
+    for k, v in args.items():
+        correct_k = func_mappings.get(k, k)
+        mapped_args[correct_k] = v
+        
+    # 2. Filter to valid signature
+    return {k: v for k, v in mapped_args.items() if k in valid_params}
 
 def parse_and_execute_tools(text, tools_list):
     """
@@ -39,9 +67,13 @@ def parse_and_execute_tools(text, tools_list):
                         args[param_name] = param_value.strip()
                 
                 if tool_name in tool_map:
-                    logger.info(f"Executing tool call: {tool_name} with args: {args}")
+                    target_func = tool_map[tool_name]
+                    # Apply parameter mapping and filtering
+                    clean_args = filter_args(target_func, args)
+                    
+                    logger.info(f"Executing tool call: {tool_name} with args: {clean_args}")
                     try:
-                        res = tool_map[tool_name](**args)
+                        res = target_func(**clean_args)
                         results.append(f"Tool {tool_name} output: {res}")
                     except Exception as e:
                         results.append(f"Tool {tool_name} failed: {str(e)}")
@@ -54,10 +86,12 @@ def parse_and_execute_tools(text, tools_list):
             invoke_matches = re.findall(r'<invoke\s+name=["\'](.*?)["\']>(.*?)</invoke>', block, re.DOTALL)
             for name, content in invoke_matches:
                 if name in tool_map:
+                    target_func = tool_map[name]
                     params = re.findall(r'<parameter\s+name=["\'](.*?)["\']>(.*?)</parameter>', content, re.DOTALL)
-                    args = {k: v.strip() for k, v in params}
+                    raw_args = {k: v.strip() for k, v in params}
+                    clean_args = filter_args(target_func, raw_args)
                     try:
-                        res = tool_map[name](**args)
+                        res = target_func(**clean_args)
                         results.append(f"Tool {name} output: {res}")
                     except Exception as e:
                         results.append(f"Tool {name} failed: {str(e)}")
