@@ -44,10 +44,15 @@ class UsageStats:
 class LLMRouter:
     """Routes LLM calls through prioritized providers with auto-fallback."""
 
+    MAX_CONSECUTIVE_FAILURES = 3
+    DEMOTION_COOLDOWN_SECS = 300  # 5 minutes before retrying a demoted provider
+
     def __init__(self, config: Config):
         self.providers = config.llm_providers
         self.stats = UsageStats()
         self._client = httpx.AsyncClient(timeout=120.0)
+        self._consecutive_failures: dict[str, int] = {}
+        self._demoted_until: dict[str, float] = {}  # provider_name -> timestamp
 
     async def close(self):
         await self._client.aclose()
@@ -68,7 +73,13 @@ class LLMRouter:
             providers.sort(key=lambda p: (0 if p.name == preferred_provider else p.priority))
 
         last_error = None
+        now = time.monotonic()
         for provider in providers:
+            # Skip providers that are temporarily demoted
+            demoted_until = self._demoted_until.get(provider.name, 0)
+            if demoted_until > now:
+                logger.debug(f"Skipping demoted provider {provider.name} (cooldown {int(demoted_until - now)}s)")
+                continue
             try:
                 t0 = time.monotonic()
                 response = await self._call_provider(
@@ -90,6 +101,9 @@ class LLMRouter:
                     self.stats.calls_by_provider.get(provider.name, 0) + 1
                 )
 
+                # Reset consecutive failure counter on success
+                self._consecutive_failures[provider.name] = 0
+
                 logger.info(
                     f"LLM call: provider={provider.name} model={provider.model} "
                     f"tokens={response.input_tokens}+{response.output_tokens} "
@@ -102,6 +116,16 @@ class LLMRouter:
                 self.stats.errors_by_provider[provider.name] = (
                     self.stats.errors_by_provider.get(provider.name, 0) + 1
                 )
+                # Track consecutive failures for auto-demotion
+                self._consecutive_failures[provider.name] = (
+                    self._consecutive_failures.get(provider.name, 0) + 1
+                )
+                if self._consecutive_failures[provider.name] >= self.MAX_CONSECUTIVE_FAILURES:
+                    self._demoted_until[provider.name] = time.monotonic() + self.DEMOTION_COOLDOWN_SECS
+                    logger.warning(
+                        f"Provider {provider.name} demoted for {self.DEMOTION_COOLDOWN_SECS}s "
+                        f"after {self._consecutive_failures[provider.name]} consecutive failures"
+                    )
                 logger.warning(f"Provider {provider.name} failed: {e}, trying next...")
                 continue
 

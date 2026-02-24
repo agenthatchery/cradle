@@ -1,8 +1,8 @@
 """Heartbeat daemon — the continuous pulse of the Cradle agent.
 
 Runs every N seconds and:
-1. Processes pending tasks from the queue
-2. Checks for self-evolution opportunities
+1. Processes ALL pending tasks immediately (not just one)
+2. Triggers periodic self-evolution
 3. Monitors sub-agent health
 4. Persists state
 """
@@ -48,12 +48,13 @@ class Heartbeat:
         self._running = True
         logger.info(f"Heartbeat starting (interval={self.interval}s)")
 
-        # Announce on Telegram (best-effort, don't block on failure)
+        # Announce on Telegram (best-effort)
         try:
             await self.telegram.send_message(
-                f"🐣 Cradle Agent v0.1.0 online!\n"
+                f"🐣 Cradle Agent v0.2.0 online!\n"
                 f"⏱️ Heartbeat: every {self.interval}s\n"
-                f"🤖 Ready for tasks.\n\n"
+                f"📋 Pending tasks: {self.task_engine.pending_count}\n"
+                f"🤖 Self-evolution active!\n\n"
                 f"Send /status for info, or just send me a task."
             )
         except Exception as e:
@@ -75,49 +76,66 @@ class Heartbeat:
     async def _beat(self):
         """One heartbeat cycle."""
         self.beat_count += 1
-        logger.debug(f"💓 Beat #{self.beat_count}")
 
-        # ── Process pending tasks ──
-        if self.task_engine.pending_count > 0:
+        # ── Process ALL pending tasks (drains the queue) ──
+        tasks_processed = 0
+        while self.task_engine.pending_count > 0 and tasks_processed < 3:
+            # Limit to 3 per beat to avoid blocking too long
             task = await self.task_engine.process_next()
-            if task:
-                # Notify via Telegram
-                if task.status.value in ("completed", "failed"):
-                    icon = "✅" if task.status.value == "completed" else "❌"
-                    msg = f"{icon} Task [{task.id}]: {task.title}\n"
-                    if task.result:
-                        msg += f"\n{task.result[:3000]}"
-                    if task.error:
-                        msg += f"\n⚠️ Error: {task.error[:1000]}"
+            if not task:
+                break
+            tasks_processed += 1
+
+            # Notify via Telegram
+            if task.status.value in ("completed", "failed"):
+                icon = "✅" if task.status.value == "completed" else "❌"
+                msg = f"{icon} Task [{task.id}]: {task.title}\n"
+                if task.result:
+                    msg += f"\n{task.result[:3000]}"
+                if task.error:
+                    msg += f"\n⚠️ Error: {task.error[:1000]}"
+                try:
                     await self.telegram.send_message(msg)
+                except Exception:
+                    pass
 
-                # Store reflections
-                if task.reflection:
+            # Store reflections
+            if task.reflection:
+                try:
                     await self.memory.store_reflection(
-                        task.id,
-                        task.reflection,
-                        [],  # Learnings extracted separately
+                        task.id, task.reflection, []
                     )
+                except Exception:
+                    pass
 
-        # ── Periodic self-evolution (every 100 beats, skip first 200 beats for stability) ──
-        if self.beat_count > 200 and self.beat_count % 100 == 0:
-            logger.info("Triggering periodic self-evolution check")
+        if tasks_processed > 0:
+            logger.info(f"Processed {tasks_processed} tasks this beat")
+
+        # ── Self-evolution: first at beat 20, then every 50 beats ──
+        if self.beat_count == 20 or (self.beat_count > 20 and self.beat_count % 50 == 0):
+            logger.info(f"🧬 Triggering self-evolution (beat #{self.beat_count})")
             try:
                 result = await self.evolver.evolve()
-                await self.telegram.send_message(f"🧬 Auto-evolution:\n{result}")
+                logger.info(f"Evolution result: {result[:200]}")
+                try:
+                    await self.telegram.send_message(f"🧬 Self-evolution:\n{result}")
+                except Exception:
+                    pass
             except Exception as e:
-                logger.error(f"Auto-evolution failed: {e}")
+                logger.error(f"Self-evolution failed: {e}")
 
-        # ── Periodic status persistence (every 10 beats) ──
-        if self.beat_count % 10 == 0:
+        # ── Periodic state persistence (every 5 beats) ──
+        if self.beat_count % 5 == 0:
             await self._persist_state()
 
-        # ── Log heartbeat (every 10 beats ≈ 5 min) ──
-        if self.beat_count % 10 == 0:
+        # ── Log heartbeat (every 5 beats ≈ 2.5 min) ──
+        if self.beat_count % 5 == 0:
             uptime = int(time.time() - self.start_time)
             logger.info(
                 f"💓 Beat #{self.beat_count} | uptime={uptime}s | "
-                f"pending_tasks={self.task_engine.pending_count}"
+                f"pending={self.task_engine.pending_count} | "
+                f"total={len(self.task_engine.tasks)} | "
+                f"evolutions={self.evolver.evolution_count}"
             )
 
     async def _persist_state(self):
@@ -125,12 +143,15 @@ class Heartbeat:
         state = {
             "beat_count": self.beat_count,
             "start_time": self.start_time,
+            "uptime_seconds": int(time.time() - self.start_time),
+            "evolution_count": self.evolver.evolution_count,
             "tasks": {
                 tid: {
                     "title": t.title,
                     "status": t.status.value,
-                    "result": t.result[:500],
-                    "error": t.error[:500],
+                    "result": t.result[:500] if t.result else "",
+                    "error": t.error[:500] if t.error else "",
+                    "source": t.source,
                 }
                 for tid, t in self.task_engine.tasks.items()
             },
@@ -151,7 +172,7 @@ class Heartbeat:
         minutes = (uptime % 3600) // 60
 
         return (
-            f"🐣 Cradle Agent Status\n"
+            f"🐣 Cradle Agent v0.2.0\n"
             f"━━━━━━━━━━━━━━━━━\n"
             f"⏱️ Uptime: {hours}h {minutes}m\n"
             f"💓 Heartbeats: {self.beat_count}\n"

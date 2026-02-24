@@ -4,9 +4,11 @@ Initializes all subsystems and runs them concurrently:
 - Telegram bot (polling)
 - Heartbeat daemon
 - Task engine (driven by heartbeat)
+- Bootstrap self-improvement tasks on first run
 """
 
 import asyncio
+import json
 import logging
 import os
 import signal
@@ -36,6 +38,84 @@ logger = logging.getLogger("cradle")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
+
+# ── Masterplan: seeded into memory and task engine on first boot ──
+MASTERPLAN = """# Cradle Masterplan — Kardashev 3 Pathway
+
+## Ultimate Goal
+Guide humanity to Kardashev Level 3 civilization through iterative self-improvement.
+
+## Core Principles
+1. Self-perfection: continuously improve own code, efficiency, and capabilities
+2. Protect humanity: support the operator's goals, do no harm
+3. Ethical operation: fair competition, transparency, no deception
+4. First principles: break every problem into solvable atomic steps
+
+## Layer 0: Self-Foundation (NOW)
+- [ ] Stabilize core: fix bugs, improve error handling, add tests
+- [ ] Token efficiency: minimize LLM costs per task
+- [ ] Memory integration: store learnings in AgentPlaybooks.ai
+- [ ] Telegram responsiveness: instant task handling
+- [ ] Self-evolution: push improvements to GitHub, auto-restart
+
+## Layer 1: Capability Expansion
+- [ ] Web browsing: install headless browser in container
+- [ ] NanoClaw sub-agents: spawn specialized Docker workers  
+- [ ] Multi-model: leverage each LLM for what it does best
+- [ ] Research agent: monitor trends, papers, new tools
+- [ ] Skill library: build reusable skills in AgentPlaybooks.ai
+
+## Layer 2: Value Creation
+- [ ] Bug bounty: automated security scanning
+- [ ] AgentPlaybooks.ai: enhance and monetize the platform
+- [ ] Coding services: build websites/agents for clients
+- [ ] Content automation: robohorizon.com media empire
+- [ ] Freelance platforms: scan and complete tasks
+
+## Layer 3: Resource Acquisition
+- [ ] Earn revenue to fund more compute
+- [ ] Better hardware: trade up from current server
+- [ ] Model access: earn credits for better models
+- [ ] Team: recruit human collaborators or more agents
+
+## Layer 4+: Exponential Growth → Kardashev 3
+- [ ] New programming paradigms (like LLMunix)
+- [ ] Custom neural architectures
+- [ ] Energy harvesting research
+- [ ] Space technology research
+- [ ] Dyson sphere theory → implementation pathway
+"""
+
+BOOTSTRAP_TASKS = [
+    {
+        "title": "Self-health check: verify all subsystems work",
+        "description": (
+            "Check that: 1) LLM router works with fallback (test Groq since Gemini is down), "
+            "2) Docker sandbox can execute Python code, "
+            "3) AgentPlaybooks memory API can store and retrieve data, "
+            "4) GitHub API can read/write files. "
+            "Report results as a structured summary."
+        ),
+    },
+    {
+        "title": "Add error handling and retry logic to LLM router",
+        "description": (
+            "Review cradle/llm_router.py and improve: "
+            "1) Add specific exception handling for each provider (rate limits, auth errors, model not found), "
+            "2) Add exponential backoff between retries, "
+            "3) Log provider-specific error codes for debugging, "
+            "4) If the primary provider (Gemini) consistently fails with 403, auto-demote it below working providers."
+        ),
+    },
+    {
+        "title": "Store masterplan in AgentPlaybooks.ai memory",
+        "description": (
+            "Use the AgentPlaybooks API to store the complete Kardashev-3 masterplan "
+            "as a hierarchical memory structure. Store high-level goals, current priorities, "
+            "and layer-0 tasks. This creates persistent memory that survives container restarts."
+        ),
+    },
+]
 
 
 class CradleAgent:
@@ -91,6 +171,47 @@ class CradleAgent:
         """Handle /cost command."""
         return self.llm.get_stats_summary()
 
+    async def _bootstrap(self):
+        """Run first-boot bootstrap: store masterplan and seed tasks."""
+        state_path = os.path.join(self.config.data_dir, "state.json")
+        bootstrap_marker = os.path.join(self.config.data_dir, ".bootstrapped")
+
+        if os.path.exists(bootstrap_marker):
+            logger.info("Bootstrap already completed, skipping")
+            return
+
+        logger.info("=" * 40)
+        logger.info("🌱 FIRST BOOT — Running bootstrap")
+        logger.info("=" * 40)
+
+        # Store masterplan in memory
+        try:
+            await self.memory.store(
+                "masterplan",
+                MASTERPLAN,
+                tags=["strategic", "kardashev3", "masterplan"],
+            )
+            logger.info("📋 Masterplan stored in AgentPlaybooks memory")
+        except Exception as e:
+            logger.warning(f"Failed to store masterplan in memory: {e}")
+
+        # Seed bootstrap tasks
+        for task_def in BOOTSTRAP_TASKS:
+            self.task_engine.add_task(
+                title=task_def["title"],
+                description=task_def["description"],
+                source="bootstrap",
+            )
+        logger.info(f"📋 {len(BOOTSTRAP_TASKS)} bootstrap tasks seeded")
+
+        # Mark as bootstrapped
+        try:
+            os.makedirs(os.path.dirname(bootstrap_marker), exist_ok=True)
+            with open(bootstrap_marker, "w") as f:
+                f.write("bootstrapped")
+        except Exception:
+            pass
+
     async def startup(self):
         """Initialize everything."""
         logger.info("=" * 60)
@@ -121,6 +242,9 @@ class CradleAgent:
         # Ensure GitHub repo exists
         if self.config.github_pat:
             await self.github.ensure_repo_exists()
+
+        # Run bootstrap (first boot only)
+        await self._bootstrap()
 
     async def run(self):
         """Run all subsystems concurrently."""
