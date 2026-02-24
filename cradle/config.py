@@ -87,6 +87,15 @@ class Config:
                 priority=1,
                 cost_per_1k_tokens=0.00015,
             ))
+            # Premium model for strategic/planning tasks (preferred_provider="gemini-pro")
+            providers.append(LLMProvider(
+                name="gemini-pro",
+                api_key=gemini_key,
+                base_url="https://generativelanguage.googleapis.com/v1beta",
+                model="gemini-3.1-pro-preview",
+                priority=10,  # only used when explicitly requested
+                cost_per_1k_tokens=0.005,
+            ))
 
         minimax_key = os.getenv("MINIMAX_API_KEY", "")
         if minimax_key:
@@ -94,7 +103,7 @@ class Config:
                 name="minimax",
                 api_key=minimax_key,
                 base_url="https://api.minimaxi.chat/v1",
-                model="MiniMax-M1",
+                model="MiniMax-M2.5",
                 priority=2,
                 max_rpm=20,  # ~100 req/5h
                 cost_per_1k_tokens=0.0,
