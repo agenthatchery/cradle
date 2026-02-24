@@ -1,13 +1,16 @@
-"""Docker sandbox — spawns ephemeral containers for safe code execution.
+"""Sandbox — executes agent-generated code safely.
 
-Every piece of agent-generated code runs here, never on the host.
-Containers are: --rm (auto-delete), --cap-drop=ALL, time-limited.
+Primary: Docker containers (if Docker socket is available)
+Fallback: Direct subprocess with /tmp isolation (when Docker is not available)
+
+Every sub-agent runs here, never in the main process.
 """
 
 import asyncio
 import json
 import logging
 import os
+import shutil
 import tempfile
 import time
 from dataclasses import dataclass
@@ -16,13 +19,13 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 SANDBOX_IMAGE = "python:3.12-slim"
-DEFAULT_TIMEOUT = 60  # seconds
-MAX_OUTPUT_BYTES = 50_000  # truncate enormous outputs
+DEFAULT_TIMEOUT = 60
+MAX_OUTPUT_BYTES = 50_000
 
 
 @dataclass
 class SandboxResult:
-    """Result from running code in a sandbox container."""
+    """Result from running code in a sandbox."""
     success: bool
     stdout: str
     stderr: str
@@ -30,13 +33,38 @@ class SandboxResult:
     duration_ms: int
     container_id: str = ""
     truncated: bool = False
+    method: str = ""  # "docker" or "subprocess"
 
 
 class Sandbox:
-    """Manages ephemeral Docker containers for isolated code execution."""
+    """Manages code execution in isolated environments."""
 
     def __init__(self, docker_socket: str = "/var/run/docker.sock"):
         self.docker_socket = docker_socket
+        self._docker_available: Optional[bool] = None
+
+    async def _check_docker(self) -> bool:
+        """Check if Docker CLI is available."""
+        if self._docker_available is not None:
+            return self._docker_available
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "docker", "version",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await asyncio.wait_for(proc.communicate(), timeout=5)
+            self._docker_available = proc.returncode == 0
+            if self._docker_available:
+                logger.info("Docker CLI available — using Docker sandbox")
+            else:
+                logger.warning("Docker CLI found but not working — using subprocess fallback")
+        except (FileNotFoundError, asyncio.TimeoutError):
+            self._docker_available = False
+            logger.warning("Docker CLI not found — using subprocess fallback (less isolated)")
+
+        return self._docker_available
 
     async def run_python(
         self,
@@ -45,27 +73,11 @@ class Sandbox:
         packages: Optional[list[str]] = None,
         network: bool = False,
     ) -> SandboxResult:
-        """Run Python code in an isolated container.
-        
-        Args:
-            code: Python source code to execute
-            timeout: Max seconds before kill
-            packages: pip packages to install before running
-            network: Whether to allow network access (default: no)
-        """
-        # Build the script that runs inside the container
-        setup_script = "#!/bin/bash\nset -e\n"
-        if packages:
-            setup_script += f"pip install --quiet {' '.join(packages)}\n"
-        setup_script += "python /workspace/script.py\n"
-
-        return await self._run_in_container(
-            image=SANDBOX_IMAGE,
-            files={"script.py": code, "run.sh": setup_script},
-            command=["bash", "/workspace/run.sh"],
-            timeout=timeout,
-            network=network,
-        )
+        """Run Python code in the best available sandbox."""
+        if await self._check_docker():
+            return await self._run_docker(code, timeout, packages, network)
+        else:
+            return await self._run_subprocess(code, timeout, packages)
 
     async def run_shell(
         self,
@@ -74,128 +86,195 @@ class Sandbox:
         timeout: int = DEFAULT_TIMEOUT,
         network: bool = False,
     ) -> SandboxResult:
-        """Run a shell script in an isolated container."""
-        return await self._run_in_container(
-            image=image,
-            files={"script.sh": script},
-            command=["bash", "/workspace/script.sh"],
-            timeout=timeout,
-            network=network,
-        )
+        """Run a shell script."""
+        if await self._check_docker():
+            return await self._run_docker_shell(script, image, timeout, network)
+        else:
+            return await self._run_subprocess_shell(script, timeout)
 
-    async def _run_in_container(
-        self,
-        image: str,
-        files: dict[str, str],
-        command: list[str],
-        timeout: int,
-        network: bool,
+    # ── Docker Sandbox ──
+
+    async def _run_docker(
+        self, code: str, timeout: int, packages: Optional[list[str]], network: bool
     ) -> SandboxResult:
-        """Core container execution logic."""
+        """Run Python in a Docker container."""
         t0 = time.monotonic()
 
-        # Create temp directory with files
         with tempfile.TemporaryDirectory(prefix="cradle_sandbox_") as tmpdir:
-            for filename, content in files.items():
-                filepath = os.path.join(tmpdir, filename)
-                with open(filepath, "w") as f:
-                    f.write(content)
-                if filename.endswith(".sh"):
-                    os.chmod(filepath, 0o755)
+            # Write code file
+            script_path = os.path.join(tmpdir, "script.py")
+            with open(script_path, "w") as f:
+                f.write(code)
 
-            # Build docker run command
+            # Write runner script
+            runner = "#!/bin/bash\nset -e\n"
+            if packages:
+                runner += f"pip install --quiet {' '.join(packages)}\n"
+            runner += "python /workspace/script.py\n"
+
+            runner_path = os.path.join(tmpdir, "run.sh")
+            with open(runner_path, "w") as f:
+                f.write(runner)
+            os.chmod(runner_path, 0o755)
+
+            # Build docker command
             docker_cmd = [
-                "docker", "run",
-                "--rm",                          # Auto-remove after exit
-                "--cap-drop=ALL",                # Drop all capabilities
-                "--memory=256m",                 # Memory limit
-                "--cpus=1",                      # CPU limit
-                "--pids-limit=100",              # Process limit
-                "-v", f"{tmpdir}:/workspace:ro", # Mount code read-only
+                "docker", "run", "--rm",
+                "--cap-drop=ALL",
+                "--memory=256m", "--cpus=1",
+                "--pids-limit=100",
+                "-v", f"{tmpdir}:/workspace:ro",
                 "-w", "/workspace",
             ]
-
             if not network:
                 docker_cmd.append("--network=none")
 
-            docker_cmd.append(image)
-            docker_cmd.extend(command)
+            docker_cmd.extend([SANDBOX_IMAGE, "bash", "/workspace/run.sh"])
 
-            logger.info(f"Sandbox: running in {image} with timeout={timeout}s network={network}")
+            return await self._exec(docker_cmd, timeout, t0, method="docker")
 
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    *docker_cmd,
+    async def _run_docker_shell(
+        self, script: str, image: str, timeout: int, network: bool
+    ) -> SandboxResult:
+        """Run shell script in Docker."""
+        t0 = time.monotonic()
+
+        with tempfile.TemporaryDirectory(prefix="cradle_sandbox_") as tmpdir:
+            script_path = os.path.join(tmpdir, "script.sh")
+            with open(script_path, "w") as f:
+                f.write(script)
+            os.chmod(script_path, 0o755)
+
+            docker_cmd = [
+                "docker", "run", "--rm",
+                "--cap-drop=ALL",
+                "--memory=256m", "--cpus=1",
+                "-v", f"{tmpdir}:/workspace:ro",
+                "-w", "/workspace",
+            ]
+            if not network:
+                docker_cmd.append("--network=none")
+
+            docker_cmd.extend([image, "bash", "/workspace/script.sh"])
+
+            return await self._exec(docker_cmd, timeout, t0, method="docker")
+
+    # ── Subprocess Fallback ──
+
+    async def _run_subprocess(
+        self, code: str, timeout: int, packages: Optional[list[str]]
+    ) -> SandboxResult:
+        """Run Python code as a subprocess (fallback when Docker not available)."""
+        t0 = time.monotonic()
+
+        with tempfile.TemporaryDirectory(prefix="cradle_sub_") as tmpdir:
+            script_path = os.path.join(tmpdir, "script.py")
+            with open(script_path, "w") as f:
+                f.write(code)
+
+            # Install packages first if needed
+            if packages:
+                pip_proc = await asyncio.create_subprocess_exec(
+                    "pip", "install", "--quiet", *packages,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-
                 try:
-                    stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                        proc.communicate(), timeout=timeout
-                    )
+                    await asyncio.wait_for(pip_proc.communicate(), timeout=30)
                 except asyncio.TimeoutError:
-                    proc.kill()
-                    await proc.wait()
-                    duration = int((time.monotonic() - t0) * 1000)
-                    return SandboxResult(
-                        success=False,
-                        stdout="",
-                        stderr=f"TIMEOUT: Container killed after {timeout}s",
-                        exit_code=-1,
-                        duration_ms=duration,
-                    )
+                    pass
 
-                stdout = stdout_bytes.decode("utf-8", errors="replace")
-                stderr = stderr_bytes.decode("utf-8", errors="replace")
+            cmd = ["python", script_path]
+            return await self._exec(cmd, timeout, t0, method="subprocess")
 
-                truncated = False
-                if len(stdout) > MAX_OUTPUT_BYTES:
-                    stdout = stdout[:MAX_OUTPUT_BYTES] + "\n... [TRUNCATED]"
-                    truncated = True
-                if len(stderr) > MAX_OUTPUT_BYTES:
-                    stderr = stderr[:MAX_OUTPUT_BYTES] + "\n... [TRUNCATED]"
-                    truncated = True
+    async def _run_subprocess_shell(self, script: str, timeout: int) -> SandboxResult:
+        """Run shell script as subprocess."""
+        t0 = time.monotonic()
 
-                duration = int((time.monotonic() - t0) * 1000)
-                exit_code = proc.returncode or 0
+        with tempfile.TemporaryDirectory(prefix="cradle_sub_") as tmpdir:
+            script_path = os.path.join(tmpdir, "script.sh")
+            with open(script_path, "w") as f:
+                f.write(script)
+            os.chmod(script_path, 0o755)
 
-                result = SandboxResult(
-                    success=(exit_code == 0),
-                    stdout=stdout,
-                    stderr=stderr,
-                    exit_code=exit_code,
-                    duration_ms=duration,
-                    truncated=truncated,
+            cmd = ["bash", script_path]
+            return await self._exec(cmd, timeout, t0, method="subprocess")
+
+    # ── Common execution ──
+
+    async def _exec(
+        self, cmd: list[str], timeout: int, t0: float, method: str
+    ) -> SandboxResult:
+        """Execute a command and capture output."""
+        logger.info(f"Sandbox ({method}): running {cmd[0]} timeout={timeout}s")
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            try:
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    proc.communicate(), timeout=timeout
                 )
-
-                logger.info(
-                    f"Sandbox: done exit={exit_code} duration={duration}ms "
-                    f"stdout={len(stdout)}b stderr={len(stderr)}b"
-                )
-                return result
-
-            except FileNotFoundError:
-                duration = int((time.monotonic() - t0) * 1000)
-                return SandboxResult(
-                    success=False,
-                    stdout="",
-                    stderr="Docker CLI not found — is Docker installed?",
-                    exit_code=-2,
-                    duration_ms=duration,
-                )
-            except Exception as e:
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
                 duration = int((time.monotonic() - t0) * 1000)
                 return SandboxResult(
-                    success=False,
-                    stdout="",
-                    stderr=f"Sandbox error: {e}",
-                    exit_code=-3,
-                    duration_ms=duration,
+                    success=False, stdout="", method=method,
+                    stderr=f"TIMEOUT: Killed after {timeout}s",
+                    exit_code=-1, duration_ms=duration,
                 )
+
+            stdout = stdout_bytes.decode("utf-8", errors="replace")
+            stderr = stderr_bytes.decode("utf-8", errors="replace")
+
+            truncated = False
+            if len(stdout) > MAX_OUTPUT_BYTES:
+                stdout = stdout[:MAX_OUTPUT_BYTES] + "\n... [TRUNCATED]"
+                truncated = True
+            if len(stderr) > MAX_OUTPUT_BYTES:
+                stderr = stderr[:MAX_OUTPUT_BYTES] + "\n... [TRUNCATED]"
+                truncated = True
+
+            duration = int((time.monotonic() - t0) * 1000)
+            exit_code = proc.returncode or 0
+
+            result = SandboxResult(
+                success=(exit_code == 0),
+                stdout=stdout, stderr=stderr,
+                exit_code=exit_code, duration_ms=duration,
+                truncated=truncated, method=method,
+            )
+
+            logger.info(
+                f"Sandbox ({method}): exit={exit_code} duration={duration}ms "
+                f"stdout={len(stdout)}b stderr={len(stderr)}b"
+            )
+            return result
+
+        except FileNotFoundError:
+            duration = int((time.monotonic() - t0) * 1000)
+            return SandboxResult(
+                success=False, stdout="", method=method,
+                stderr=f"Command not found: {cmd[0]}",
+                exit_code=-2, duration_ms=duration,
+            )
+        except Exception as e:
+            duration = int((time.monotonic() - t0) * 1000)
+            return SandboxResult(
+                success=False, stdout="", method=method,
+                stderr=f"Sandbox error: {e}",
+                exit_code=-3, duration_ms=duration,
+            )
 
     async def pull_image(self, image: str) -> bool:
         """Pre-pull a Docker image."""
+        if not await self._check_docker():
+            return False
         try:
             proc = await asyncio.create_subprocess_exec(
                 "docker", "pull", image,

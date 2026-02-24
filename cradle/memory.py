@@ -1,15 +1,17 @@
-"""AgentPlaybooks.ai memory client — stores skills, learnings, and reflections.
+"""AgentPlaybooks.ai memory client — persists skills, tasks, and reflections.
 
-Uses the Playbook API with the agent's API key for memory write-back.
-Memory is hierarchical:
-  - Strategic: long-term goals, plans
-  - Skill: learned capabilities, patterns
-  - Task: specific task results, reflections
+Uses the MCP JSON-RPC protocol for writes and REST API for reads.
+Supports hierarchical memory with tiers (working/contextual/longterm),
+task graphs, canvas, and skills.
+
+API Endpoints:
+  - GET  /api/playbooks/{guid}/memory          — list/read memories
+  - POST /api/mcp/{guid}                       — MCP JSON-RPC (write_memory, create_skill, etc.)
 """
 
 import json
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 import httpx
 
@@ -17,174 +19,302 @@ from cradle.config import Config
 
 logger = logging.getLogger(__name__)
 
+BASE_URL = "https://agentplaybooks.ai"
+
 
 class Memory:
-    """Client for AgentPlaybooks.ai memory and skills API."""
+    """Client for AgentPlaybooks.ai — MCP JSON-RPC + REST API."""
 
     def __init__(self, config: Config):
         self.config = config
-        self.base_url = config.agentplaybooks_base_url
         self.api_key = config.agentplaybooks_key
         self.guid = config.agentplaybooks_guid
         self.playbook_id = config.agentplaybooks_playbook_id
         self._client = httpx.AsyncClient(timeout=30.0)
+        self._rpc_id = 0
 
     async def close(self):
         await self._client.aclose()
 
-    def _headers(self) -> dict:
+    def _auth_headers(self) -> dict:
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
-    # ── Memory Operations ──
+    def _next_rpc_id(self) -> int:
+        self._rpc_id += 1
+        return self._rpc_id
 
-    async def store(self, key: str, value: str, tags: Optional[list[str]] = None) -> bool:
-        """Store a memory entry."""
+    # ── MCP JSON-RPC Call (for all write operations) ──
+
+    async def _mcp_call(self, tool_name: str, arguments: dict) -> Optional[dict]:
+        """Call an MCP tool via JSON-RPC on AgentPlaybooks."""
         if not self.guid or not self.api_key:
-            logger.debug("Memory: no API key or GUID configured, skipping store")
-            return False
+            logger.debug("Memory: no GUID or API key configured")
+            return None
+
+        url = f"{BASE_URL}/api/mcp/{self.guid}"
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._next_rpc_id(),
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments,
+            },
+        }
 
         try:
-            url = f"{self.base_url}/playbooks/{self.guid}/memory/{key}"
-            body = {"value": value}
-            if tags:
-                body["tags"] = tags
-
-            resp = await self._client.put(url, json=body, headers=self._headers())
+            resp = await self._client.post(url, json=payload, headers=self._auth_headers())
             resp.raise_for_status()
-            logger.info(f"Memory stored: {key}")
-            return True
-        except Exception as e:
-            logger.error(f"Memory store failed for {key}: {e}")
-            return False
+            data = resp.json()
 
-    async def recall(self, key: str) -> Optional[str]:
-        """Retrieve a memory entry."""
+            if "error" in data:
+                logger.error(f"MCP error calling {tool_name}: {data['error']}")
+                return None
+
+            result = data.get("result", {})
+            logger.info(f"MCP {tool_name} succeeded")
+            return result
+        except Exception as e:
+            logger.error(f"MCP call {tool_name} failed: {e}")
+            return None
+
+    # ── REST API (for reads) ──
+
+    async def _rest_get(self, path: str, params: Optional[dict] = None) -> Optional[Any]:
+        """GET request to REST API."""
         if not self.guid:
             return None
 
+        url = f"{BASE_URL}/api/playbooks/{self.guid}/{path}"
         try:
-            url = f"{self.base_url}/playbooks/{self.guid}/memory"
-            resp = await self._client.get(url, headers=self._headers())
-            resp.raise_for_status()
-            memories = resp.json()
-
-            # Search through memories for the key
-            if isinstance(memories, list):
-                for mem in memories:
-                    if mem.get("key") == key:
-                        return mem.get("value")
-            elif isinstance(memories, dict):
-                return memories.get(key)
-
-            return None
-        except Exception as e:
-            logger.error(f"Memory recall failed for {key}: {e}")
-            return None
-
-    async def recall_all(self) -> dict:
-        """Retrieve all memory entries."""
-        if not self.guid:
-            return {}
-
-        try:
-            url = f"{self.base_url}/playbooks/{self.guid}/memory"
-            resp = await self._client.get(url, headers=self._headers())
+            resp = await self._client.get(url, params=params, headers=self._auth_headers())
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
-            logger.error(f"Memory recall_all failed: {e}")
-            return {}
+            logger.error(f"REST GET {path} failed: {e}")
+            return None
+
+    # ── Memory Operations ──
+
+    async def store(
+        self,
+        key: str,
+        value: Any,
+        tags: Optional[list[str]] = None,
+        description: str = "",
+        tier: str = "contextual",
+        priority: int = 50,
+        parent_key: Optional[str] = None,
+        summary: Optional[str] = None,
+        memory_type: str = "flat",
+        status: Optional[str] = None,
+    ) -> bool:
+        """Store a memory entry via MCP write_memory tool."""
+        args: dict = {"key": key, "value": value}
+        if tags:
+            args["tags"] = tags
+        if description:
+            args["description"] = description
+        if tier != "contextual":
+            args["tier"] = tier
+        if priority != 50:
+            args["priority"] = priority
+        if parent_key:
+            args["parent_key"] = parent_key
+        if summary:
+            args["summary"] = summary
+        if memory_type != "flat":
+            args["memory_type"] = memory_type
+        if status:
+            args["status"] = status
+
+        result = await self._mcp_call("write_memory", args)
+        if result is not None:
+            logger.info(f"Memory stored: {key} (tier={tier})")
+            return True
+        return False
+
+    async def recall(self, key: str) -> Optional[dict]:
+        """Read a memory entry via MCP read_memory tool."""
+        result = await self._mcp_call("read_memory", {"key": key})
+        return result
+
+    async def search(
+        self,
+        search: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        tier: Optional[str] = None,
+        memory_type: Optional[str] = None,
+    ) -> list:
+        """Search memories via MCP search_memory tool."""
+        args: dict = {}
+        if search:
+            args["search"] = search
+        if tags:
+            args["tags"] = tags
+        if tier:
+            args["tier"] = tier
+        if memory_type:
+            args["memory_type"] = memory_type
+
+        result = await self._mcp_call("search_memory", args)
+        if result and isinstance(result, dict):
+            # MCP returns content array
+            content = result.get("content", [])
+            if content and isinstance(content, list):
+                for item in content:
+                    if item.get("type") == "text":
+                        try:
+                            return json.loads(item.get("text", "[]"))
+                        except json.JSONDecodeError:
+                            return []
+        return []
+
+    async def recall_all(self) -> list:
+        """Retrieve all memories via REST API (faster for bulk reads)."""
+        data = await self._rest_get("memory")
+        return data if isinstance(data, list) else []
 
     async def forget(self, key: str) -> bool:
         """Delete a memory entry."""
-        if not self.guid or not self.api_key:
-            return False
+        result = await self._mcp_call("delete_memory", {"key": key})
+        return result is not None
 
-        try:
-            url = f"{self.base_url}/playbooks/{self.guid}/memory/{key}"
-            resp = await self._client.delete(url, headers=self._headers())
-            resp.raise_for_status()
+    # ── Task Graph Operations ──
+
+    async def create_task_graph(
+        self,
+        plan_key: str,
+        plan_summary: str,
+        tasks: list[dict],
+        tags: Optional[list[str]] = None,
+    ) -> bool:
+        """Create a hierarchical task graph in AgentPlaybooks."""
+        args: dict = {
+            "plan_key": plan_key,
+            "plan_summary": plan_summary,
+            "tasks": tasks,
+        }
+        if tags:
+            args["tags"] = tags
+
+        result = await self._mcp_call("create_task_graph", args)
+        if result is not None:
+            logger.info(f"Task graph created: {plan_key} with {len(tasks)} tasks")
             return True
-        except Exception as e:
-            logger.error(f"Memory forget failed for {key}: {e}")
-            return False
+        return False
+
+    async def update_task_status(
+        self,
+        key: str,
+        status: str,
+        result: Optional[dict] = None,
+        summary: Optional[str] = None,
+    ) -> bool:
+        """Update a task's status in a hierarchical plan."""
+        args: dict = {"key": key, "status": status}
+        if result:
+            args["result"] = result
+        if summary:
+            args["summary"] = summary
+
+        r = await self._mcp_call("update_task_status", args)
+        return r is not None
 
     # ── Skill Operations ──
 
-    async def store_skill(self, name: str, content: str) -> bool:
-        """Store a learned skill."""
-        if not self.playbook_id or not self.api_key:
-            logger.debug("Memory: no playbook_id configured, storing skill as memory")
-            return await self.store(f"skill:{name}", content, tags=["skill"])
-
-        try:
-            url = f"{self.base_url}/playbooks/{self.playbook_id}/skills"
-            body = {
-                "name": name,
-                "content": content,
-            }
-            resp = await self._client.post(url, json=body, headers=self._headers())
-            resp.raise_for_status()
+    async def store_skill(self, name: str, content: str, description: str = "") -> bool:
+        """Create or update a skill via MCP."""
+        result = await self._mcp_call("create_skill", {
+            "name": name,
+            "content": content,
+            "description": description or name,
+        })
+        if result is not None:
             logger.info(f"Skill stored: {name}")
             return True
-        except Exception as e:
-            logger.error(f"Skill store failed for {name}: {e}")
-            # Fall back to memory storage
-            return await self.store(f"skill:{name}", content, tags=["skill"])
+        return False
 
     async def list_skills(self) -> list:
-        """List all stored skills."""
-        if not self.playbook_id:
-            return []
+        """List all skills via MCP."""
+        result = await self._mcp_call("list_skills", {})
+        if result and isinstance(result, dict):
+            content = result.get("content", [])
+            if content and isinstance(content, list):
+                for item in content:
+                    if item.get("type") == "text":
+                        try:
+                            return json.loads(item.get("text", "[]"))
+                        except json.JSONDecodeError:
+                            return []
+        return []
 
-        try:
-            url = f"{self.base_url}/playbooks/{self.playbook_id}/skills"
-            resp = await self._client.get(url, headers=self._headers())
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as e:
-            logger.error(f"Skill list failed: {e}")
-            return []
-
-    # ── Reflection Storage ──
+    # ── Reflection & Learning Storage ──
 
     async def store_reflection(self, task_id: str, reflection: str, learnings: list[str]):
-        """Store a task reflection and any learnings."""
+        """Store a task reflection in hierarchical memory."""
         await self.store(
-            f"reflection:{task_id}",
-            json.dumps({
-                "reflection": reflection,
-                "learnings": learnings,
-            }),
-            tags=["reflection"],
+            key=f"reflection:{task_id}",
+            value={"reflection": reflection, "learnings": learnings},
+            tags=["reflection", "self-evolution"],
+            description=f"Reflection on task {task_id}",
+            tier="contextual",
+            summary=reflection[:200] if reflection else "",
         )
 
-        # Store each learning as a separate skill-like memory
+        # Store each learning as a separate memory for easy retrieval
         for i, learning in enumerate(learnings):
             if learning.strip():
                 await self.store(
-                    f"learning:{task_id}:{i}",
-                    learning,
+                    key=f"learning:{task_id}:{i}",
+                    value={"learning": learning},
                     tags=["learning"],
+                    description=learning[:200],
+                    tier="longterm",
                 )
 
     async def get_learnings(self) -> list[str]:
         """Retrieve all stored learnings."""
-        memories = await self.recall_all()
+        memories = await self.search(tags=["learning"])
         learnings = []
+        for mem in memories:
+            val = mem.get("value", {})
+            if isinstance(val, dict):
+                learnings.append(val.get("learning", ""))
+            elif isinstance(val, str):
+                learnings.append(val)
+        return [l for l in learnings if l]
 
-        if isinstance(memories, list):
-            for mem in memories:
-                if "learning" in (mem.get("tags", []) or []):
-                    learnings.append(mem.get("value", ""))
-                elif isinstance(mem.get("key", ""), str) and mem["key"].startswith("learning:"):
-                    learnings.append(mem.get("value", ""))
-        elif isinstance(memories, dict):
-            for key, value in memories.items():
-                if key.startswith("learning:"):
-                    learnings.append(value if isinstance(value, str) else str(value))
+    # ── Canvas Operations (for storing plans, docs) ──
 
-        return learnings
+    async def write_canvas(self, slug: str, name: str, content: str) -> bool:
+        """Create or update a canvas document."""
+        result = await self._mcp_call("write_canvas", {
+            "slug": slug,
+            "name": name,
+            "content": content,
+        })
+        return result is not None
+
+    async def read_canvas(self, slug: str) -> Optional[str]:
+        """Read a canvas document."""
+        result = await self._mcp_call("read_canvas", {"slug": slug})
+        if result and isinstance(result, dict):
+            content = result.get("content", [])
+            if content and isinstance(content, list):
+                for item in content:
+                    if item.get("type") == "text":
+                        return item.get("text", "")
+        return None
+
+    # ── Context View ──
+
+    async def get_context(self, tiers: Optional[list[str]] = None) -> Optional[dict]:
+        """Get optimized context view of memories."""
+        args: dict = {}
+        if tiers:
+            args["include_tiers"] = tiers
+        return await self._mcp_call("get_memory_context", args)
