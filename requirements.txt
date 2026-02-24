@@ -1,0 +1,4 @@
+httpx>=0.27
+python-telegram-bot>=21.0
+pyyaml>=6.0
+tenacity>=9.0

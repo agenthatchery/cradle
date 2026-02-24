@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  cradle:
+    build: .
+    container_name: cradle
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Docker-in-Docker: mount host Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent data (memory, logs, state)
+      - ./data:/app/data
+      # Logs
+      - ./logs:/app/logs
+    # No ports needed — Telegram polling is outbound-only
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
