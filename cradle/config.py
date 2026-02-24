@@ -83,7 +83,7 @@ class Config:
                 name="gemini",
                 api_key=gemini_key,
                 base_url="https://generativelanguage.googleapis.com/v1beta",
-                model=os.getenv("GEMINI_MODEL", "gemini-3.1-pro"),
+                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
                 priority=1,
                 cost_per_1k_tokens=0.00015,
             ))
