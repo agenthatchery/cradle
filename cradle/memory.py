@@ -318,3 +318,24 @@ class Memory:
         if tiers:
             args["include_tiers"] = tiers
         return await self._mcp_call("get_memory_context", args)
+
+    async def update_playbook(
+        self,
+        persona_name: Optional[str] = None,
+        persona_system_prompt: Optional[str] = None,
+        persona_metadata: Optional[dict] = None,
+    ) -> bool:
+        """Update the agent's core persona and system prompt in AgentPlaybooks."""
+        args: dict = {}
+        if persona_name:
+            args["persona_name"] = persona_name
+        if persona_system_prompt:
+            args["persona_system_prompt"] = persona_system_prompt
+        if persona_metadata:
+            args["persona_metadata"] = persona_metadata
+
+        if not args:
+            return False
+
+        result = await self._mcp_call("update_playbook", args)
+        return result is not None

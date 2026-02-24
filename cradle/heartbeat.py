@@ -25,73 +25,73 @@ logger = logging.getLogger(__name__)
 # Self-improvement task templates — the agent cycles through these
 SELF_IMPROVEMENT_TASKS = [
     {
-        "title": "Store Cradle system prompt in AgentPlaybooks as a skill",
+        "title": "Migrate Cradle system prompt to AgentPlaybooks Persona",
         "description": (
-            "Read the current system prompt from the task_engine._think method, "
-            "and store it as a skill named 'cradle_system_prompt' in AgentPlaybooks.ai. "
-            "This ensures the prompt is editable and persistent across restarts."
+            "Extract the full system prompt from task_engine.py and config instructions. "
+            "Use the memory.update_playbook tool to set the persona_system_prompt in AgentPlaybooks. "
+            "This makes the agent's core instructions editable from the web UI."
         ),
     },
     {
-        "title": "Research NanoClaw agent framework on GitHub",
+        "title": "Perform a deep architecture review using Gemini 3.1 Pro",
         "description": (
-            "Search for and read about NanoClaw (github.com/openclaw/nanoclaw or similar). "
-            "Understand how it spawns Docker sub-agents from skills. "
-            "Write a summary of how to integrate NanoClaw-style spawning into Cradle."
+            "Read all source files in the cradle/ directory. "
+            "Use the premium 'gemini-pro' provider (Gemini 3.1 Pro Preview) to analyze "
+            "the architecture for bottlenecks, security flaws, and scalability issues. "
+            "Store the detailed analysis as a Canvas document in AgentPlaybooks."
         ),
     },
     {
-        "title": "Implement sub-agent spawning from GitHub repos",
+        "title": "Synchronize agent capabilities as official Skills",
         "description": (
-            "Write Python code to clone a GitHub repo into a temp directory, "
-            "build a Docker image from it, and run it as an ephemeral sub-agent "
-            "that sends results back via a mounted volume. "
-            "Test with: github.com/matebenyovszky/healing-agent as a sample repo."
+            "For each key module (sandbox, llm_router, memory, evolver), "
+            "generate a concise 'skill definition' (prompt/instructions). "
+            "Use memory.store_skill to upload these to AgentPlaybooks. "
+            "Ensure they follow the international agentplaybook.ai standard."
         ),
     },
     {
-        "title": "Store agent capabilities as AgentPlaybooks skills",
+        "title": "Research and implement NanoClaw-style sub-agent spawning",
         "description": (
-            "Create skills in AgentPlaybooks for each Cradle capability: "
-            "1) 'llm_routing' - how to use multi-provider LLM with fallback, "
-            "2) 'docker_sandbox' - how to run code in isolated containers, "
-            "3) 'self_evolution' - how to improve own code via GitHub. "
-            "Use the create_skill MCP tool."
+            "Analyze the NanoClaw spawning mechanism (cloning GitHub repos into Docker). "
+            "Implement a 'SubAgentSpawner' skill that can take a GitHub URL, "
+            "spin up a container, execute a specific command, and pull results. "
+            "Test with 'github.com/matebenyovszky/healing-agent' as a proof of concept."
         ),
     },
     {
-        "title": "Analyze and optimize token usage across providers",
+        "title": "Audit and optimize multi-provider cost/performance",
         "description": (
-            "Review the LLM router stats. Calculate cost per provider. "
-            "Identify which providers are most cost-effective for different task types. "
-            "Propose prompt optimization strategies to reduce token usage."
+            "Analyze the last 100 LLM calls from logs. Compare latency and success rates "
+            "between Gemini 2.5 Flash, Groq, and OpenAI. "
+            "Adjust provider priorities in config.py if certain providers are underperforming. "
+            "Store the optimization report in AgentPlaybooks memory."
         ),
     },
     {
-        "title": "Create a self-assessment report of current capabilities",
+        "title": "Enhance Evolver with automated unit test generation",
         "description": (
-            "List all working features, broken features, and missing features. "
-            "Score each capability 0-10. Identify the top 3 improvements that would "
-            "have the highest impact. Store this in AgentPlaybooks memory. "
-            "Report findings to the operator via Telegram."
+            "Modify the evolver.py to automatically generate unit tests for proposed changes. "
+            "The evolver should write a test file, run it in the sandbox, "
+            "and only proceed if BOTH the code and the new tests pass. "
+            "This ensures self-modifications are safe."
         ),
     },
     {
-        "title": "Research revenue generation strategies",
+        "title": "Implement long-term memory consolidation (RLM)",
         "description": (
-            "Analyze potential revenue streams: 1) bug bounty programs, "
-            "2) freelance coding on platforms, 3) building websites/agents for clients, "
-            "4) improving AgentPlaybooks.ai as a product, "
-            "5) content automation for robohorizon.com. "
-            "Rank by feasibility vs effort. Store findings in AgentPlaybooks memory."
+            "Analyze the current memory usage. Implement a background task that "
+            "takes 'contextual' memories and summarizes them into 'longterm' memories "
+            "using RLM (Recursive Language Model) patterns. "
+            "This prevents context window bloat while retaining knowledge."
         ),
     },
     {
-        "title": "Improve error handling in all modules",
+        "title": "Research and implement revenue-generating agent skills",
         "description": (
-            "Review all Python files in cradle/ for error handling gaps. "
-            "Add proper try/except blocks, better error messages, "
-            "and graceful degradation. Focus on: sandbox.py, llm_router.py, memory.py."
+            "Investigate automated bug bounty hunting and freelance coding tasks. "
+            "Develop a skill that can search for open issues on GitHub tagged 'good first issue' "
+            "and propose fixes for them. Goal: make the agent self-sustaining."
         ),
     },
 ]
