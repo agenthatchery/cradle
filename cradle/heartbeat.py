@@ -48,13 +48,16 @@ class Heartbeat:
         self._running = True
         logger.info(f"Heartbeat starting (interval={self.interval}s)")
 
-        # Announce on Telegram
-        await self.telegram.send_message(
-            f"🐣 Cradle Agent v0.1.0 online!\n"
-            f"⏱️ Heartbeat: every {self.interval}s\n"
-            f"🤖 Ready for tasks.\n\n"
-            f"Send /status for info, or just send me a task."
-        )
+        # Announce on Telegram (best-effort, don't block on failure)
+        try:
+            await self.telegram.send_message(
+                f"🐣 Cradle Agent v0.1.0 online!\n"
+                f"⏱️ Heartbeat: every {self.interval}s\n"
+                f"🤖 Ready for tasks.\n\n"
+                f"Send /status for info, or just send me a task."
+            )
+        except Exception as e:
+            logger.warning(f"Startup announcement failed: {e}")
 
         while self._running:
             try:
@@ -72,6 +75,7 @@ class Heartbeat:
     async def _beat(self):
         """One heartbeat cycle."""
         self.beat_count += 1
+        logger.debug(f"💓 Beat #{self.beat_count}")
 
         # ── Process pending tasks ──
         if self.task_engine.pending_count > 0:
@@ -95,8 +99,8 @@ class Heartbeat:
                         [],  # Learnings extracted separately
                     )
 
-        # ── Periodic self-evolution (every 100 beats ≈ ~50 min) ──
-        if self.beat_count % 100 == 0 and self.beat_count > 0:
+        # ── Periodic self-evolution (every 100 beats, skip first 200 beats for stability) ──
+        if self.beat_count > 200 and self.beat_count % 100 == 0:
             logger.info("Triggering periodic self-evolution check")
             try:
                 result = await self.evolver.evolve()
@@ -108,8 +112,8 @@ class Heartbeat:
         if self.beat_count % 10 == 0:
             await self._persist_state()
 
-        # ── Log heartbeat ──
-        if self.beat_count % 20 == 0:
+        # ── Log heartbeat (every 10 beats ≈ 5 min) ──
+        if self.beat_count % 10 == 0:
             uptime = int(time.time() - self.start_time)
             logger.info(
                 f"💓 Beat #{self.beat_count} | uptime={uptime}s | "
