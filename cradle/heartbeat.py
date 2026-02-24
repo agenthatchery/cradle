@@ -128,7 +128,7 @@ class Heartbeat:
         try:
             pending = self.task_engine.pending_count
             await self.telegram.send_message(
-                f"🐣 Cradle Agent v0.4.0 online!\n"
+                f"🐣 Cradle Agent v0.5.0 online!\n"
                 f"⏱️ Heartbeat: every {self.interval}s\n"
                 f"📋 Pending tasks: {pending}\n"
                 f"🧬 Self-evolution: active\n"
@@ -268,7 +268,7 @@ class Heartbeat:
         minutes = (uptime % 3600) // 60
 
         return (
-            f"🐣 Cradle Agent v0.4.0\n"
+            f"🐣 Cradle Agent v0.5.0\n"
             f"━━━━━━━━━━━━━━━━━\n"
             f"⏱️ Uptime: {hours}h {minutes}m\n"
             f"💓 Heartbeats: {self.beat_count}\n"
