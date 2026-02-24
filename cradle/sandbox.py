@@ -99,8 +99,11 @@ class Sandbox:
     ) -> SandboxResult:
         """Run Python in a Docker container."""
         t0 = time.monotonic()
-
-        with tempfile.TemporaryDirectory(prefix="cradle_sandbox_") as tmpdir:
+        # Use mkdtemp (NOT 'with TemporaryDirectory') so the dir survives until
+        # after Docker has finished. The 'with' context manager deletes the dir
+        # before Docker mounts /workspace, causing: bash: /workspace/run.sh: No such file
+        tmpdir = tempfile.mkdtemp(prefix="cradle_sandbox_")
+        try:
             # Write code file
             script_path = os.path.join(tmpdir, "script.py")
             with open(script_path, "w") as f:
@@ -109,7 +112,7 @@ class Sandbox:
             # Write runner script
             runner = "#!/bin/bash\nset -e\n"
             if packages:
-                runner += f"pip install --quiet {' '.join(packages)}\n"
+                runner += f"pip install --quiet --no-cache-dir {' '.join(packages)}\n"
             runner += "python /workspace/script.py\n"
 
             runner_path = os.path.join(tmpdir, "run.sh")
@@ -123,7 +126,7 @@ class Sandbox:
                 "--cap-drop=ALL",
                 "--memory=256m", "--cpus=1",
                 "--pids-limit=100",
-                "-v", f"{tmpdir}:/workspace:ro",
+                "-v", f"{tmpdir}:/workspace",  # rw so pip can write wheels
                 "-w", "/workspace",
             ]
             if not network:
@@ -132,14 +135,16 @@ class Sandbox:
             docker_cmd.extend([SANDBOX_IMAGE, "bash", "/workspace/run.sh"])
 
             return await self._exec(docker_cmd, timeout, t0, method="docker")
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     async def _run_docker_shell(
         self, script: str, image: str, timeout: int, network: bool
     ) -> SandboxResult:
         """Run shell script in Docker."""
         t0 = time.monotonic()
-
-        with tempfile.TemporaryDirectory(prefix="cradle_sandbox_") as tmpdir:
+        tmpdir = tempfile.mkdtemp(prefix="cradle_shell_")
+        try:
             script_path = os.path.join(tmpdir, "script.sh")
             with open(script_path, "w") as f:
                 f.write(script)
@@ -149,7 +154,7 @@ class Sandbox:
                 "docker", "run", "--rm",
                 "--cap-drop=ALL",
                 "--memory=256m", "--cpus=1",
-                "-v", f"{tmpdir}:/workspace:ro",
+                "-v", f"{tmpdir}:/workspace",
                 "-w", "/workspace",
             ]
             if not network:
@@ -158,6 +163,8 @@ class Sandbox:
             docker_cmd.extend([image, "bash", "/workspace/script.sh"])
 
             return await self._exec(docker_cmd, timeout, t0, method="docker")
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     # ── Subprocess Fallback ──
 

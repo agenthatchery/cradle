@@ -23,6 +23,7 @@ from cradle.memory import Memory
 from cradle.github_client import GitHubClient
 from cradle.evolver import Evolver
 from cradle.heartbeat import Heartbeat
+from cradle.skills import SkillLoader
 
 # ── Logging ──
 logging.basicConfig(
@@ -125,9 +126,10 @@ class CradleAgent:
         self.config = Config.from_env()
         self.llm = LLMRouter(self.config)
         self.sandbox = Sandbox()
-        self.task_engine = TaskEngine(self.llm, self.sandbox)
-        self.telegram = TelegramBot(self.config)
         self.memory = Memory(self.config)
+        self.skills = SkillLoader(self.memory)
+        self.task_engine = TaskEngine(self.llm, self.sandbox, self.skills)
+        self.telegram = TelegramBot(self.config)
         self.github = GitHubClient(self.config)
         self.evolver = Evolver(
             self.config, self.llm, self.sandbox, self.github, self.memory
@@ -242,6 +244,18 @@ class CradleAgent:
         # Ensure GitHub repo exists
         if self.config.github_pat:
             await self.github.ensure_repo_exists()
+
+        # Load skills from AgentPlaybooks
+        try:
+            count = await self.skills.fetch_from_agentplaybooks()
+            if count == 0:
+                logger.info("No skills found in AgentPlaybooks, syncing built-ins...")
+                count = await self.skills.sync_builtin_skills()
+            else:
+                logger.info(f"Loaded {count} skills from AgentPlaybooks")
+        except Exception as e:
+            logger.warning(f"Failed to fetch skills: {e}")
+            self.skills.load_builtin_skills_local()
 
         # Run bootstrap (first boot only)
         await self._bootstrap()

@@ -223,6 +223,14 @@ class Heartbeat:
         if self.beat_count % 5 == 0:
             await self._persist_state()
 
+        # ── Fetch latest skills from AgentPlaybooks (every 10 beats) ──
+        if self.beat_count > 0 and self.beat_count % 10 == 0:
+            if getattr(self.task_engine, "skills", None):
+                try:
+                    await self.task_engine.skills.fetch_from_agentplaybooks()
+                except Exception as e:
+                    logger.debug(f"Background skill fetch failed: {e}")
+
         # ── Log heartbeat (every 5 beats ≈ 2.5 min) ──
         if self.beat_count % 5 == 0:
             uptime = int(time.time() - self.start_time)

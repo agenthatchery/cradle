@@ -21,6 +21,7 @@ from cradle.sandbox import Sandbox, SandboxResult
 logger = logging.getLogger(__name__)
 
 
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     THINKING = "thinking"
@@ -54,9 +55,10 @@ class Task:
 class TaskEngine:
     """Manages the hierarchical task tree and executes tasks via ReAct loop."""
 
-    def __init__(self, llm: LLMRouter, sandbox: Sandbox):
+    def __init__(self, llm: LLMRouter, sandbox: Sandbox, skills=None):
         self.llm = llm
         self.sandbox = sandbox
+        self.skills = skills  # Optional[SkillLoader]
         self.tasks: dict[str, Task] = {}
         self._queue: asyncio.Queue[str] = asyncio.Queue()
 
@@ -170,19 +172,33 @@ class TaskEngine:
 
     async def _think(self, task: Task) -> dict:
         """THINK phase: Plan how to solve the task."""
+        # Build skill context
+        skills_summary = ""
+        skill_details = ""
+        if self.skills:
+            skills_summary = self.skills.get_skills_summary()
+            skill_details = self.skills.get_relevant_skills(task.title, task.description)
+
         system = """You are Cradle, a self-evolving AI agent. Analyze the task and decide how to solve it.
 
 Respond with a JSON object containing one of:
 1. {"type": "direct_answer", "answer": "..."} — for questions that don't need code
 2. {"type": "code", "language": "python", "code": "...", "packages": [], "needs_network": false} — for tasks requiring execution
-3. {"type": "decompose", "subtasks": [{"title": "...", "description": "..."}]} — for complex tasks
+3. {"type": "code", "language": "bash", "code": "..."} — for shell tasks
+4. {"type": "decompose", "subtasks": [{"title": "...", "description": "..."}]} — for complex tasks
 
-Be practical and efficient. Write clean, working code. If network access is needed (API calls, web scraping), set needs_network to true."""
+Be practical and efficient. Write clean, working code. If network access is needed (API calls, web scraping, git clone), set needs_network to true."""
+
+        if skills_summary:
+            system += f"\n\n{skills_summary}"
 
         prompt = f"Task: {task.title}\n\nDescription: {task.description}"
 
         if task.attempts > 1 and task.error:
             prompt += f"\n\nPrevious attempt failed with:\n{task.error}\n\nPlease fix the issue."
+
+        if skill_details:
+            prompt += f"\n\n## Relevant Skill Instructions\n{skill_details}"
 
         response = await self.llm.complete(prompt, system=system)
 
