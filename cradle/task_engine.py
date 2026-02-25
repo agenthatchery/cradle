@@ -138,6 +138,12 @@ class TaskEngine:
         # ── EXECUTE: Run in sandbox ──
         task.status = TaskStatus.EXECUTING
         if language == "python":
+            # Auto-inject relevant Python skill definitions so the LLM doesn't have to perfectly copy them
+            if self.skills:
+                skill_impls = self.skills.get_relevant_skills_python(task.title, task.description)
+                if skill_impls:
+                    code = f"{skill_impls}\n\n# --- LLM GENERATED CODE BELOW ---\n{code}"
+
             result = await self.sandbox.run_python(
                 code,
                 packages=plan.get("packages", []),
