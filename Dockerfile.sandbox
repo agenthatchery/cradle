@@ -9,8 +9,12 @@ RUN apt-get update && \
         wget \
         jq \
         ca-certificates \
-        docker.io \
     && rm -rf /var/lib/apt/lists/*
+
+# Install static docker CLI
+RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-26.0.1.tgz \
+    && tar xzvf docker-26.0.1.tgz --strip 1 -C /usr/local/bin docker/docker \
+    && rm docker-26.0.1.tgz
 
 # Suppress pip root-user warning
 ENV PIP_ROOT_USER_ACTION=ignore
