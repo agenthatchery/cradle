@@ -1,0 +1,17 @@
+# Sandbox image for Cradle agent code execution
+# Pre-installs git, curl, and other common tools to avoid inline installs
+FROM python:3.12-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        wget \
+        jq \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Suppress pip root-user warning
+ENV PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /workspace

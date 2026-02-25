@@ -23,7 +23,8 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-SANDBOX_IMAGE = "python:3.12-slim"
+SANDBOX_IMAGE = "cradle-sandbox"  # Custom image with git, curl, jq pre-installed
+SANDBOX_IMAGE_FALLBACK = "python:3.12-slim"  # Used if custom image not available
 DEFAULT_TIMEOUT = 60
 MAX_OUTPUT_BYTES = 50_000
 
@@ -47,6 +48,30 @@ class Sandbox:
     def __init__(self, docker_socket: str = "/var/run/docker.sock"):
         self.docker_socket = docker_socket
         self._docker_available: Optional[bool] = None
+        self._sandbox_image: Optional[str] = None
+
+    async def _get_sandbox_image(self) -> str:
+        """Check if cradle-sandbox image exists, fall back to python:3.12-slim."""
+        if self._sandbox_image is not None:
+            return self._sandbox_image
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "docker", "image", "inspect", SANDBOX_IMAGE,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await asyncio.wait_for(proc.wait(), timeout=5)
+            if proc.returncode == 0:
+                self._sandbox_image = SANDBOX_IMAGE
+                logger.info(f"Using custom sandbox image: {SANDBOX_IMAGE}")
+            else:
+                self._sandbox_image = SANDBOX_IMAGE_FALLBACK
+                logger.warning(f"Custom sandbox image not found, using: {SANDBOX_IMAGE_FALLBACK}")
+        except Exception:
+            self._sandbox_image = SANDBOX_IMAGE_FALLBACK
+
+        return self._sandbox_image
 
     async def _check_docker(self) -> bool:
         """Check if Docker CLI is available and DinD works."""
@@ -114,8 +139,8 @@ class Sandbox:
             # Prepend pip install in Python itself (no bash needed)
             pip_code = (
                 "import subprocess, sys\n"
-                f"subprocess.run([sys.executable, '-m', 'pip', 'install', '--quiet', '--no-cache-dir', "
-                f"{', '.join(repr(p) for p in packages)}], check=True)\n\n"
+                f"subprocess.run([sys.executable, '-m', 'pip', 'install', '--quiet', '--no-cache-dir', '--root-user-action=ignore', "
+                f"{', '.join(repr(p) for p in packages)}], check=True, stderr=subprocess.DEVNULL)\n\n"
             )
             payload = pip_code + code
         else:
@@ -124,7 +149,7 @@ class Sandbox:
         docker_cmd = [
             "docker", "run", "--rm", "-i",  # -i = keep stdin open
             "--cap-drop=ALL",
-            "--memory=256m", "--cpus=1",
+            "--memory=512m", "--cpus=1",
             "--pids-limit=100",
         ]
         if not network:
@@ -137,7 +162,7 @@ class Sandbox:
             if val:
                 docker_cmd += ["-e", f"{env_var}={val}"]
 
-        docker_cmd.extend([SANDBOX_IMAGE, "python", "-"])
+        docker_cmd.extend([await self._get_sandbox_image(), "python", "-"])
 
         return await self._exec_with_stdin(docker_cmd, payload, timeout, t0, method="dind-stdin")
 
