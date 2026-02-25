@@ -61,6 +61,7 @@ class TaskEngine:
         self.skills = skills  # Optional[SkillLoader]
         self.tasks: dict[str, Task] = {}
         self._queue: asyncio.Queue[str] = asyncio.Queue()
+        self.dynamic_persona: Optional[str] = None
 
     def add_task(
         self,
@@ -203,7 +204,9 @@ class TaskEngine:
             skills_summary = self.skills.get_skills_summary()
             skill_details = self.skills.get_relevant_skills(task.title, task.description)
 
-        system = """You are Cradle, a fully autonomous self-evolving AI agent running inside Docker.
+        # Use dynamic persona from AgentPlaybooks if available, fallback to hardcoded
+        persona_base = self.dynamic_persona or """You are Cradle, a fully autonomous self-evolving AI agent running inside Docker."""
+        system = f"""{persona_base}
 
 ## CRITICAL RULE: ALWAYS WRITE CODE
 🚨 You MUST respond with executable code for ANY task that involves doing something.

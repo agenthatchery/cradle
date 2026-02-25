@@ -227,14 +227,19 @@ class Memory:
     # ── Skill Operations ──
 
     async def store_skill(self, name: str, content: str, description: str = "") -> bool:
-        """Create or update a skill via MCP."""
-        result = await self._mcp_call("create_skill", {
+        """Create or update a skill via MCP. deduplicates by name."""
+        # Check if exists
+        skills = await self.list_skills()
+        exists = any(s.get("name") == name for s in skills)
+        
+        tool = "update_skill" if exists else "create_skill"
+        result = await self._mcp_call(tool, {
             "name": name,
             "content": content,
             "description": description or name,
         })
         if result is not None:
-            logger.info(f"Skill stored: {name}")
+            logger.info(f"Skill {tool}ed: {name}")
             return True
         return False
 
@@ -338,4 +343,27 @@ class Memory:
             return False
 
         result = await self._mcp_call("update_playbook", args)
+        return result is not None
+
+    async def get_persona(self) -> Optional[dict]:
+        """Fetch the agent's core persona (including system prompt) from the API."""
+        # The REST API for playbook detail includes the persona fields
+        data = await self._rest_get("")
+        if data and isinstance(data, dict):
+            return {
+                "name": data.get("persona_name"),
+                "system_prompt": data.get("persona_system_prompt"),
+                "metadata": data.get("persona_metadata", {}),
+            }
+        return None
+
+    async def archive_memories(self, keys: Optional[list[str]] = None, older_than_hours: Optional[float] = None) -> bool:
+        """Consolidate/Archive memories into longterm tier."""
+        args: dict = {}
+        if keys:
+            args["keys"] = keys
+        if older_than_hours:
+            args["older_than_hours"] = older_than_hours
+        
+        result = await self._mcp_call("archive_memories", args)
         return result is not None

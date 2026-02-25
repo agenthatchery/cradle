@@ -246,13 +246,14 @@ class Heartbeat:
         if self.beat_count % 5 == 0:
             await self._persist_state()
 
-        # ── Fetch latest skills from AgentPlaybooks (every 10 beats) ──
+        # ── Memory Consolidation (every 20 beats) ──
+        if self.beat_count % 20 == 0:
+            logger.info("🧠 Consolidating memories...")
+            await self.memory.archive_memories(older_than_hours=12)
+
+        # ── Fetch latest skills & persona from AgentPlaybooks (every 10 beats) ──
         if self.beat_count > 0 and self.beat_count % 10 == 0:
-            if getattr(self.task_engine, "skills", None):
-                try:
-                    await self.task_engine.skills.fetch_from_agentplaybooks()
-                except Exception as e:
-                    logger.debug(f"Background skill fetch failed: {e}")
+            await self._sync_from_agentplaybooks()
 
         # ── Git auto-sync: pull from GitHub and restart if new commits (every 20 beats ≈ 10min) ──
         if self.beat_count > 0 and self.beat_count % 20 == 0:
@@ -407,6 +408,24 @@ class Heartbeat:
 
         except Exception as e:
             logger.warning(f"Git auto-sync failed: {e}")
+
+    async def _sync_from_agentplaybooks(self):
+        """Fetch latest skills and persona from AgentPlaybooks.ai."""
+        try:
+            # 1. Sync Skills
+            await self.task_engine.skills.sync_with_remote()
+            logger.info("📡 Skills synced from AgentPlaybooks")
+
+            # 2. Sync Persona (System Prompt)
+            persona = await self.memory.get_persona()
+            if persona and persona.get("system_prompt"):
+                # Update the task engine's dynamic persona if available
+                # We'll need to modify TaskEngine to support this
+                # For now, we update the Config or TaskEngine class variable
+                self.task_engine.dynamic_persona = persona["system_prompt"]
+                logger.info("🧠 Remote Persona synced from AgentPlaybooks")
+        except Exception as e:
+            logger.warning(f"Sync from AgentPlaybooks failed: {e}")
 
     def get_status(self) -> str:
         """Human-readable status string."""
