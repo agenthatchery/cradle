@@ -366,9 +366,13 @@ class SkillLoader:
         relevant = []
 
         keywords = {
-            "web_search": ["search", "web", "internet", "research", "find", "look up", "browse", "google", "url", "http"],
-            "github_cli": ["github", "git", "repo", "clone", "commit", "push", "pull", "code", "file", "repository"],
-            "spawn_agent": ["spawn", "sub-agent", "agent", "docker", "nanoclaw", "run", "execute", "healing"],
+            "web_search": ["search", "web", "internet", "research", "find", "look up", "browse", "google",
+                          "url", "http", "trending", "news", "investigate", "money", "revenue", "bounty",
+                          "discover", "explore", "scrape"],
+            "github_cli": ["github", "git", "repo", "clone", "commit", "push", "pull", "code", "file",
+                          "repository", "evolve", "self", "modify", "update", "branch", "merge", "source"],
+            "spawn_agent": ["spawn", "sub-agent", "subagent", "agent", "nanoclaw", "healing",
+                           "opencode", "openclaw", "container", "docker run"],
         }
 
         for name, kws in keywords.items():

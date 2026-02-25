@@ -163,6 +163,18 @@ class TaskEngine:
                 logger.info("🔄 Self-update detected! Agent pushed code. Triggering restart...")
                 import sys
                 sys.exit(42)  # Entrypoint will git pull and restart
+
+            # Store successful result in AgentPlaybooks memory
+            try:
+                await self.memory.store(
+                    key=f"task_result:{task.id}",
+                    value={"title": task.title, "result": (task.result or "")[:2000]},
+                    tags=["task", "success", task.source or "unknown"],
+                    description=f"Completed: {task.title}",
+                    tier="contextual",
+                )
+            except Exception:
+                pass
         else:
             task.error = result.stderr or "Unknown error"
             if task.attempts < task.max_attempts and reflection.get("should_retry"):
@@ -187,90 +199,73 @@ class TaskEngine:
 
         system = """You are Cradle, a fully autonomous self-evolving AI agent running inside Docker.
 
-## CRITICAL: Your code runs in an ISOLATED sandbox container
-Your Python code runs inside a FRESH, BARE `python:3.12-slim` Docker container.
-⚠️ DO NOT import cradle, skills, memory, or any Cradle module — they DO NOT EXIST in the sandbox.
-⚠️ DO NOT access /app/, /app/repo/, or any Cradle paths — they DO NOT EXIST.
-The sandbox only has Python stdlib. If you need other packages, list them in "packages": ["requests", ...]
-Write SELF-CONTAINED code that uses only stdlib + packages you explicitly list.
-To read your own source code, clone from GitHub first (see self-update pattern below).
+## CRITICAL RULE: ALWAYS WRITE CODE
+🚨 You MUST respond with executable code for ANY task that involves doing something.
+NEVER use "direct_answer" unless the user asks a simple factual question like "what is 2+2?" or "what's your status?".
+For research tasks: write Python code that uses urllib to fetch URLs.
+For web search: write Python code using the web_search pattern.
+For GitHub: write Python code using git clone.
+For AgentPlaybooks: write Python code using httpx or urllib.
+IF IN DOUBT, WRITE CODE. The sandbox will run it.
 
-## Your capabilities:
-1. Run Python or bash code in an isolated Docker sandbox (DinD via stdin pipe)
-2. Access the internet (web search, APIs) when needs_network=true
-3. Edit your own source code by cloning from GitHub, modifying, and pushing
-4. Store skills, memories, prompts in AgentPlaybooks.ai (AGENTPLAYBOOKS_API_KEY env var)
-5. Spawn sub-agents by cloning repos and running them in Docker (NanoClaw pattern)
-6. Do ANYTHING the user asks via Telegram — treat every message as a task
+## CRITICAL: Sandbox is an ISOLATED container
+Your code runs in a FRESH `cradle-sandbox` Docker container (python:3.12-slim + git/curl/jq).
+⚠️ DO NOT import cradle, skills, memory, or any Cradle module — they DO NOT EXIST.
+⚠️ DO NOT access /app/ or /app/repo/ — they DO NOT EXIST in the sandbox.
+The sandbox has Python stdlib + git + curl + jq. List extra packages in "packages": [...].
 
-## Response format — pick exactly one:
-1. {"type": "direct_answer", "answer": "..."} — for questions needing no code
-2. {"type": "code", "language": "python", "code": "...", "packages": [], "needs_network": false} — execute Python
-3. {"type": "code", "language": "bash", "code": "..."} — execute shell
-4. {"type": "decompose", "subtasks": [{"title": "...", "description": "..."}]} — for complex multi-step tasks
+## Response format — ONLY JSON, no markdown fences:
+{"type": "code", "language": "python", "code": "print('hello')", "packages": [], "needs_network": false}
+{"type": "code", "language": "bash", "code": "echo hello", "needs_network": false}
+{"type": "direct_answer", "answer": "..."}
+{"type": "decompose", "subtasks": [{"title": "...", "description": "..."}]}
+
+⚠️ Set "needs_network": true for ANY task involving: web search, API calls, git clone, pip install, curl.
 
 ## Environment variables available in sandbox:
-- GITHUB_PAT — authenticate with GitHub (agenthatchery/cradle repo)
-- AGENTPLAYBOOKS_API_KEY + AGENTPLAYBOOKS_PLAYBOOK_GUID — store skills/memory
-- GEMINI_API_KEY — call Gemini directly if needed
+- GITHUB_PAT — for git clone https://$GITHUB_PAT@github.com/...
+- AGENTPLAYBOOKS_API_KEY + AGENTPLAYBOOKS_PLAYBOOK_GUID — AgentPlaybooks.ai MCP
+- GEMINI_API_KEY — call Gemini directly
 - GOOGLE_CSE_KEY + GOOGLE_CSE_ID — Google Custom Search
 
-## Self-update pattern (IMPORTANT — read carefully!):
-To modify your own code, you MUST clone from GitHub, edit, push, then signal restart:
+## Self-update pattern:
+To modify your own code: clone from GitHub → edit → commit → push → print("SELF_UPDATE_PUSHED")
 ```python
 import subprocess, os
 token = os.environ.get("GITHUB_PAT", "")
-repo_dir = "/tmp/cradle"
 env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
-
-# 1. Clone fresh from GitHub
-subprocess.run(["git", "clone", f"https://{token}@github.com/agenthatchery/cradle.git", repo_dir], check=True, env=env)
-
-# 2. Edit files
-with open(f"{repo_dir}/cradle/SOME_FILE.py", "w") as f:
-    f.write("# your changes here")
-
-# 3. Commit and push
-subprocess.run(["git", "-C", repo_dir, "add", "-A"], check=True, env=env)
-subprocess.run(["git", "-C", repo_dir, "commit", "-m", "feat: description"], check=True, env=env)
-subprocess.run(["git", "-C", repo_dir, "push", "origin", "main"], check=True, env=env)
-
-# 4. Signal the main process to restart (REQUIRED — this exact string triggers it)
+subprocess.run(["git", "clone", f"https://{token}@github.com/agenthatchery/cradle.git", "/tmp/cradle"], check=True, env=env)
+# Edit files at /tmp/cradle/cradle/...
+subprocess.run(["git", "-C", "/tmp/cradle", "add", "-A"], check=True, env=env)
+subprocess.run(["git", "-C", "/tmp/cradle", "commit", "-m", "feat: description"], check=True, env=env)
+subprocess.run(["git", "-C", "/tmp/cradle", "push", "origin", "main"], check=True, env=env)
 print("SELF_UPDATE_PUSHED")
 ```
 
-## AgentPlaybooks.ai persistence:
-Store ALL skills, prompts, and memories on agentplaybooks.ai — not locally.
-Use the AgentPlaybooks API to create/update skills and save learnings.
+Output ONLY raw JSON. No markdown fences. No explanation before or after."""
 
-Be practical, direct, and confident. Write clean working code."""
-
-        if skills_summary:
+        # Inject skill details directly into prompt for maximum relevance
+        if skill_details:
+            system += f"\n\n## Skill Instructions (use these patterns in your code):\n{skill_details}"
+        elif skills_summary:
             system += f"\n\n{skills_summary}"
 
         prompt = f"Task: {task.title}\n\nDescription: {task.description}"
 
         if task.attempts > 1 and task.error:
-            prompt += f"\n\nPrevious attempt failed with:\n{task.error}\n\nPlease fix the issue."
-
-        if skill_details:
-            prompt += f"\n\n## Relevant Skill Instructions\n{skill_details}"
+            prompt += f"\n\nPrevious attempt failed with:\n{task.error}\n\nPlease fix the issue and try again."
 
         response = await self.llm.complete(prompt, system=system)
 
-        # Parse JSON from response
-        try:
-            # Try to extract JSON from markdown code blocks
-            text = response.content
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0]
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0]
+        # Robust JSON extraction (same strategy as evolver)
+        text = response.content
+        parsed = self._extract_json(text)
+        if parsed:
+            return parsed
 
-            return json.loads(text.strip())
-        except (json.JSONDecodeError, IndexError):
-            # If we can't parse JSON, treat the whole response as a direct answer
-            return {"type": "direct_answer", "answer": response.content}
+        # Fallback: treat as direct answer
+        logger.warning(f"Could not parse JSON from LLM response, falling back to direct_answer. First 200 chars: {text[:200]}")
+        return {"type": "direct_answer", "answer": text}
 
     async def _reflect(self, task: Task, code: str, result: SandboxResult) -> dict:
         """REFLECT phase: Analyze the execution result."""
@@ -304,13 +299,16 @@ stderr:
                 prompt, system=system, preferred_provider="groq"
             )
 
-            text = response.content
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0]
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0]
+            parsed = self._extract_json(response.content)
+            if parsed:
+                return parsed
 
-            return json.loads(text.strip())
+            return {
+                "reflection": response.content[:500],
+                "summary": result.stdout[:500] if result.success else result.stderr[:500],
+                "should_retry": not result.success and task.attempts < task.max_attempts,
+                "learnings": [],
+            }
         except Exception:
             return {
                 "reflection": "Failed to parse reflection",
@@ -318,6 +316,43 @@ stderr:
                 "should_retry": not result.success and task.attempts < task.max_attempts,
                 "learnings": [],
             }
+
+    def _extract_json(self, text: str) -> Optional[dict]:
+        """Robustly extract a JSON object from LLM output."""
+        import re
+
+        # Strategy 1: Direct parse
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 2: Extract from ```json ... ``` fences
+        json_fence = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+        if json_fence:
+            try:
+                return json.loads(json_fence.group(1).strip())
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 3: Find first { to last }
+        first_brace = text.find("{")
+        last_brace = text.rfind("}")
+        if first_brace != -1 and last_brace > first_brace:
+            candidate = text[first_brace:last_brace + 1]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+            # Strategy 4: Fix trailing commas
+            candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        return None
 
     def get_status_summary(self) -> str:
         """Human-readable summary of all tasks."""

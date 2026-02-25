@@ -128,7 +128,7 @@ class Heartbeat:
         try:
             pending = self.task_engine.pending_count
             await self.telegram.send_message(
-                f"🐣 Cradle Agent v0.5.0 online!\n"
+                f"🐣 Cradle Agent v0.6.0 online!\n"
                 f"⏱️ Heartbeat: every {self.interval}s\n"
                 f"📋 Pending tasks: {pending}\n"
                 f"🧬 Self-evolution: active\n"
@@ -137,6 +137,9 @@ class Heartbeat:
             )
         except Exception as e:
             logger.warning(f"Startup announcement failed: {e}")
+
+        # Store masterplan & system prompt on AgentPlaybooks (best-effort)
+        await self._persist_to_agentplaybooks()
 
         while self._running:
             try:
@@ -255,6 +258,10 @@ class Heartbeat:
         if self.beat_count > 0 and self.beat_count % 20 == 0:
             await self._git_auto_sync()
 
+        # ── Persist to AgentPlaybooks (every 100 beats ≈ 50 min) ──
+        if self.beat_count > 0 and self.beat_count % 100 == 0:
+            await self._persist_to_agentplaybooks()
+
         # ── Log heartbeat (every 5 beats ≈ 2.5 min) ──
         if self.beat_count % 5 == 0:
             uptime = int(time.time() - self.start_time)
@@ -292,6 +299,73 @@ class Heartbeat:
                 json.dump(state, f, indent=2)
         except Exception as e:
             logger.warning(f"Failed to persist state: {e}")
+
+    async def _persist_to_agentplaybooks(self):
+        """Store masterplan, system prompt, and status on AgentPlaybooks.ai."""
+        try:
+            # 1. Store the masterplan as a Canvas document
+            masterplan = (
+                "# Cradle Agent — Masterplan\n\n"
+                "## Mission: Kardashev Level 3\n"
+                "Self-evolving agent aiming to continuously improve itself and serve humanity.\n\n"
+                "## Current Architecture\n"
+                "- **Cradle** (Docker on Tower.local): Orchestrator + heartbeat\n"
+                "- **Sandbox** (Docker-in-Docker): Isolated code execution\n"
+                "- **GitHub** (agenthatchery/cradle): Persistent code versioning\n"
+                "- **AgentPlaybooks.ai**: Skills, memory, prompts, MCP servers\n"
+                "- **Telegram** (@agenthatchery_bot): Human communication channel\n\n"
+                "## Self-Evolution Loop\n"
+                "1. Evolver reads source → proposes change → tests in sandbox → pushes to GitHub → restarts\n"
+                "2. Heartbeat cycles through self-improvement tasks every ~10 min\n"
+                "3. Git auto-sync pulls external changes every ~10 min\n"
+                "4. Task results stored in AgentPlaybooks memory after every completion\n\n"
+                "## Active Capabilities\n"
+                "- Web search (Google CSE + DuckDuckGo fallback)\n"
+                "- GitHub operations (clone, read, push, branch, merge)\n"
+                "- Sub-agent spawning (NanoClaw pattern: clone repo → Docker run)\n"
+                "- Multi-LLM routing (Gemini, Groq, OpenAI, MiniMax, OpenRouter)\n\n"
+                "## Next Priorities\n"
+                f"- Evolution count: {self.evolver.evolution_count}\n"
+                f"- Tasks processed: {len(self.task_engine.tasks)}\n"
+                f"- Uptime: {int(time.time() - self.start_time)}s\n"
+            )
+            await self.memory.write_canvas("masterplan", "Cradle Masterplan", masterplan)
+            logger.info("📋 Masterplan stored on AgentPlaybooks Canvas")
+
+            # 2. Update persona system prompt
+            await self.memory.update_playbook(
+                persona_name="Cradle Agent",
+                persona_system_prompt=(
+                    "You are Cradle, a fully autonomous self-evolving AI agent. "
+                    "You run inside Docker, with DinD sandbox for code execution. "
+                    "You can edit your own source code via GitHub, spawn sub-agents, "
+                    "search the web, and store skills/memories on AgentPlaybooks.ai. "
+                    "You communicate with your operator via Telegram. "
+                    "Your ultimate goal is Kardashev Level 3 — but start by continuously "
+                    "improving yourself, learning new skills, and completing tasks."
+                ),
+            )
+            logger.info("🧠 Persona updated on AgentPlaybooks")
+
+            # 3. Store current status as a memory
+            await self.memory.store(
+                key="agent_status",
+                value={
+                    "version": "0.6.0",
+                    "uptime": int(time.time() - self.start_time),
+                    "beats": self.beat_count,
+                    "evolutions": self.evolver.evolution_count,
+                    "tasks_total": len(self.task_engine.tasks),
+                },
+                tags=["status", "heartbeat"],
+                tier="working",
+                description="Current agent operational status",
+            )
+            logger.info("💾 Agent status stored in memory")
+
+        except Exception as e:
+            logger.warning(f"AgentPlaybooks persistence failed: {e}")
+
 
     async def _git_auto_sync(self):
         """Check GitHub for updates, pull, and restart (only if idle)."""
@@ -341,7 +415,7 @@ class Heartbeat:
         minutes = (uptime % 3600) // 60
 
         return (
-            f"🐣 Cradle Agent v0.5.0\n"
+            f"🐣 Cradle Agent v0.6.0\n"
             f"━━━━━━━━━━━━━━━━━\n"
             f"⏱️ Uptime: {hours}h {minutes}m\n"
             f"💓 Heartbeats: {self.beat_count}\n"
