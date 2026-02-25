@@ -246,7 +246,9 @@ Output ONLY raw JSON. No markdown fences. No explanation before or after."""
 
         # Inject skill details directly into prompt for maximum relevance
         if skill_details:
-            system += f"\n\n## Skill Instructions (use these patterns in your code):\n{skill_details}"
+            system += f"\n\n## ⚠️ CRITICAL: Skill Instructions\n"
+            system += "Skill functions are NOT pre-imported. You MUST copy the full Python implementation (e.g. `def spawn_agent(...)`) from the instructions below directly into your code.\n\n"
+            system += skill_details
         elif skills_summary:
             system += f"\n\n{skills_summary}"
 
