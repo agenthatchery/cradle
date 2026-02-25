@@ -251,6 +251,10 @@ class Heartbeat:
                 except Exception as e:
                     logger.debug(f"Background skill fetch failed: {e}")
 
+        # ── Git auto-sync: pull from GitHub and restart if new commits (every 20 beats ≈ 10min) ──
+        if self.beat_count > 0 and self.beat_count % 20 == 0:
+            await self._git_auto_sync()
+
         # ── Log heartbeat (every 5 beats ≈ 2.5 min) ──
         if self.beat_count % 5 == 0:
             uptime = int(time.time() - self.start_time)
@@ -288,6 +292,47 @@ class Heartbeat:
                 json.dump(state, f, indent=2)
         except Exception as e:
             logger.warning(f"Failed to persist state: {e}")
+
+    async def _git_auto_sync(self):
+        """Check GitHub for updates, pull, and restart (only if idle)."""
+        # Never interrupt running/pending tasks for a background update
+        if self.task_engine.pending_count > 0:
+            logger.debug("Skipping git auto-sync (tasks are pending)")
+            return
+
+        repo_dir = "/app/repo"
+        if not os.path.exists(os.path.join(repo_dir, ".git")):
+            return
+
+        try:
+            # Fetch latest from remote
+            proc = await asyncio.create_subprocess_exec(
+                "git", "-C", repo_dir, "fetch", "origin", "main",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL
+            )
+            await proc.wait()
+
+            # Count commits that are in origin/main but not in local HEAD
+            proc = await asyncio.create_subprocess_exec(
+                "git", "-C", repo_dir, "rev-list", "HEAD...origin/main", "--count",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL
+            )
+            stdout, _ = await proc.communicate()
+            if proc.returncode == 0:
+                count = int(stdout.decode().strip() or "0")
+                if count > 0:
+                    logger.info(f"🔄 GitHub auto-sync: found {count} new commits. Agent is idle. Restarting...")
+                    try:
+                        await self.telegram.send_message(f"🔄 Auto-sync: Pulled {count} new commits from GitHub.\nRestarting agent...")
+                    except Exception:
+                        pass
+                    import sys
+                    sys.exit(42)  # Exit 42 tells entrypoint.sh to git pull and restart
+
+        except Exception as e:
+            logger.warning(f"Git auto-sync failed: {e}")
 
     def get_status(self) -> str:
         """Human-readable status string."""
