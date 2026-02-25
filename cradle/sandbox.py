@@ -155,6 +155,9 @@ class Sandbox:
         ]
         if not network:
             docker_cmd.append("--network=none")
+        else:
+            # Explicit DNS fallback for reliable resolution
+            docker_cmd.extend(["--dns", "1.1.1.1", "--dns", "8.8.8.8"])
 
         # Pass env vars the agent's code might use
         for env_var in ["AGENTPLAYBOOKS_API_KEY", "AGENTPLAYBOOKS_PLAYBOOK_GUID",
