@@ -163,18 +163,41 @@ class Heartbeat:
                 break
             tasks_processed += 1
 
-            # Notify via Telegram
+            # ── Notify via Telegram (no code in messages!) ──
             if task.status.value in ("completed", "failed"):
                 icon = "✅" if task.status.value == "completed" else "❌"
-                msg = f"{icon} Task [{task.id}]: {task.title}\n"
-                if task.result:
-                    msg += f"\n{task.result[:3000]}"
-                if task.error:
-                    msg += f"\n⚠️ Error: {task.error[:1000]}"
+                msg = f"{icon} [{task.id}]: {task.title}\n"
+                if task.status.value == "completed" and task.result:
+                    # Only first 200 chars of result — full output is in logs/GitHub
+                    summary = task.result.strip().split("\n")[0][:200]
+                    msg += f"↳ {summary}"
+                if task.status.value == "failed" and task.error:
+                    err = task.error.strip()[:200]
+                    msg += f"⚠️ {err}"
                 try:
                     await self.telegram.send_message(msg)
                 except Exception:
                     pass
+
+            # ── Self-healing: auto-create fix task on failure ──
+            if task.status.value == "failed" and task.error:
+                fix_title = f"Fix failure: {task.title[:60]}"
+                fix_desc = (
+                    f"The task '{task.title}' failed with this error:\n"
+                    f"{task.error[:500]}\n\n"
+                    f"Analyze the error, fix the root cause, and retry the task. "
+                    f"If it's a code error, correct the code and re-run. "
+                    f"If it's a missing dependency, install it and retry. "
+                    f"Store the fix as a learning in AgentPlaybooks memory. "
+                    f"Original description: {task.description[:300]}"
+                )
+                self.task_engine.add_task(
+                    title=fix_title,
+                    description=fix_desc,
+                    parent_id=task.id,
+                    source="self-healing",
+                )
+                logger.info(f"🩹 Self-healing task created for [{task.id}]: {fix_title}")
 
             # Store reflections in AgentPlaybooks
             if task.reflection:

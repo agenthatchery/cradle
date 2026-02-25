@@ -1,13 +1,18 @@
-"""Sandbox — executes agent-generated code safely.
+"""Sandbox — executes agent-generated code safely using DinD (Docker-in-Docker).
 
-Primary: Docker containers (if Docker socket is available)
-Fallback: Direct subprocess with /tmp isolation (when Docker is not available)
+DinD works via the mounted /var/run/docker.sock. However, volume mounts
+(-v /tmp/foo:/workspace) fail because the container's /tmp is NOT visible
+to the host Docker daemon.
 
-Every sub-agent runs here, never in the main process.
+Solution: pipe code directly via STDIN — zero file mounts required.
+  docker run python:3.12-slim python -   (reads from stdin)
+
+For shell scripts: docker run ... bash -s < script.sh
+
+Fallback: subprocess when Docker unavailable.
 """
 
 import asyncio
-import json
 import logging
 import os
 import shutil
@@ -44,7 +49,7 @@ class Sandbox:
         self._docker_available: Optional[bool] = None
 
     async def _check_docker(self) -> bool:
-        """Check if Docker CLI is available."""
+        """Check if Docker CLI is available and DinD works."""
         if self._docker_available is not None:
             return self._docker_available
 
@@ -57,12 +62,12 @@ class Sandbox:
             await asyncio.wait_for(proc.communicate(), timeout=5)
             self._docker_available = proc.returncode == 0
             if self._docker_available:
-                logger.info("Docker CLI available — using Docker sandbox")
+                logger.info("Docker available — DinD sandbox active (stdin pipe mode)")
             else:
-                logger.warning("Docker CLI found but not working — using subprocess fallback")
+                logger.warning("Docker not working — using subprocess fallback")
         except (FileNotFoundError, asyncio.TimeoutError):
             self._docker_available = False
-            logger.warning("Docker CLI not found — using subprocess fallback (less isolated)")
+            logger.warning("Docker CLI not found — using subprocess fallback")
 
         return self._docker_available
 
@@ -75,7 +80,7 @@ class Sandbox:
     ) -> SandboxResult:
         """Run Python code in the best available sandbox."""
         if await self._check_docker():
-            return await self._run_docker(code, timeout, packages, network)
+            return await self._run_docker_stdin(code, timeout, packages, network)
         else:
             return await self._run_subprocess(code, timeout, packages)
 
@@ -88,83 +93,71 @@ class Sandbox:
     ) -> SandboxResult:
         """Run a shell script."""
         if await self._check_docker():
-            return await self._run_docker_shell(script, image, timeout, network)
+            return await self._run_docker_shell_stdin(script, image, timeout, network)
         else:
             return await self._run_subprocess_shell(script, timeout)
 
-    # ── Docker Sandbox ──
+    # ── DinD: stdin pipe mode (no volume mounts) ──
 
-    async def _run_docker(
+    async def _run_docker_stdin(
         self, code: str, timeout: int, packages: Optional[list[str]], network: bool
     ) -> SandboxResult:
-        """Run Python in a Docker container."""
+        """Run Python code in Docker by piping via stdin — no file mounts needed.
+
+        If packages are required, generates a wrapper script that installs them
+        then runs the code, all via stdin pipe.
+        """
         t0 = time.monotonic()
-        # Use mkdtemp (NOT 'with TemporaryDirectory') so the dir survives until
-        # after Docker has finished. The 'with' context manager deletes the dir
-        # before Docker mounts /workspace, causing: bash: /workspace/run.sh: No such file
-        tmpdir = tempfile.mkdtemp(prefix="cradle_sandbox_")
-        try:
-            # Write code file
-            script_path = os.path.join(tmpdir, "script.py")
-            with open(script_path, "w") as f:
-                f.write(code)
 
-            # Write runner script
-            runner = "#!/bin/bash\nset -e\n"
-            if packages:
-                runner += f"pip install --quiet --no-cache-dir {' '.join(packages)}\n"
-            runner += "python /workspace/script.py\n"
+        # Build the actual Python payload
+        if packages:
+            # Prepend pip install in Python itself (no bash needed)
+            pip_code = (
+                "import subprocess, sys\n"
+                f"subprocess.run([sys.executable, '-m', 'pip', 'install', '--quiet', '--no-cache-dir', "
+                f"{', '.join(repr(p) for p in packages)}], check=True)\n\n"
+            )
+            payload = pip_code + code
+        else:
+            payload = code
 
-            runner_path = os.path.join(tmpdir, "run.sh")
-            with open(runner_path, "w") as f:
-                f.write(runner)
-            os.chmod(runner_path, 0o755)
+        docker_cmd = [
+            "docker", "run", "--rm", "-i",  # -i = keep stdin open
+            "--cap-drop=ALL",
+            "--memory=256m", "--cpus=1",
+            "--pids-limit=100",
+        ]
+        if not network:
+            docker_cmd.append("--network=none")
 
-            # Build docker command
-            docker_cmd = [
-                "docker", "run", "--rm",
-                "--cap-drop=ALL",
-                "--memory=256m", "--cpus=1",
-                "--pids-limit=100",
-                "-v", f"{tmpdir}:/workspace",  # rw so pip can write wheels
-                "-w", "/workspace",
-            ]
-            if not network:
-                docker_cmd.append("--network=none")
+        # Pass env vars the agent's code might use
+        for env_var in ["AGENTPLAYBOOKS_API_KEY", "AGENTPLAYBOOKS_PLAYBOOK_GUID",
+                         "GEMINI_API_KEY", "GITHUB_PAT", "GOOGLE_CSE_KEY", "GOOGLE_CSE_ID"]:
+            val = os.environ.get(env_var, "")
+            if val:
+                docker_cmd += ["-e", f"{env_var}={val}"]
 
-            docker_cmd.extend([SANDBOX_IMAGE, "bash", "/workspace/run.sh"])
+        docker_cmd.extend([SANDBOX_IMAGE, "python", "-"])
 
-            return await self._exec(docker_cmd, timeout, t0, method="docker")
-        finally:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+        return await self._exec_with_stdin(docker_cmd, payload, timeout, t0, method="dind-stdin")
 
-    async def _run_docker_shell(
+    async def _run_docker_shell_stdin(
         self, script: str, image: str, timeout: int, network: bool
     ) -> SandboxResult:
-        """Run shell script in Docker."""
+        """Run shell script via stdin — no file mounts."""
         t0 = time.monotonic()
-        tmpdir = tempfile.mkdtemp(prefix="cradle_shell_")
-        try:
-            script_path = os.path.join(tmpdir, "script.sh")
-            with open(script_path, "w") as f:
-                f.write(script)
-            os.chmod(script_path, 0o755)
 
-            docker_cmd = [
-                "docker", "run", "--rm",
-                "--cap-drop=ALL",
-                "--memory=256m", "--cpus=1",
-                "-v", f"{tmpdir}:/workspace",
-                "-w", "/workspace",
-            ]
-            if not network:
-                docker_cmd.append("--network=none")
+        docker_cmd = [
+            "docker", "run", "--rm", "-i",
+            "--cap-drop=ALL",
+            "--memory=256m", "--cpus=1",
+        ]
+        if not network:
+            docker_cmd.append("--network=none")
 
-            docker_cmd.extend([image, "bash", "/workspace/script.sh"])
+        docker_cmd.extend([image, "bash", "-s"])
 
-            return await self._exec(docker_cmd, timeout, t0, method="docker")
-        finally:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+        return await self._exec_with_stdin(docker_cmd, script, timeout, t0, method="dind-shell-stdin")
 
     # ── Subprocess Fallback ──
 
@@ -174,7 +167,8 @@ class Sandbox:
         """Run Python code as a subprocess (fallback when Docker not available)."""
         t0 = time.monotonic()
 
-        with tempfile.TemporaryDirectory(prefix="cradle_sub_") as tmpdir:
+        tmpdir = tempfile.mkdtemp(prefix="cradle_sub_")
+        try:
             script_path = os.path.join(tmpdir, "script.py")
             with open(script_path, "w") as f:
                 f.write(code)
@@ -182,23 +176,23 @@ class Sandbox:
             # Install packages first if needed
             if packages:
                 pip_proc = await asyncio.create_subprocess_exec(
-                    "pip", "install", "--quiet", *packages,
+                    "pip", "install", "--quiet", "--no-cache-dir", *packages,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                try:
-                    await asyncio.wait_for(pip_proc.communicate(), timeout=30)
-                except asyncio.TimeoutError:
-                    pass
+                await asyncio.wait_for(pip_proc.communicate(), timeout=120)
 
             cmd = ["python", script_path]
             return await self._exec(cmd, timeout, t0, method="subprocess")
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     async def _run_subprocess_shell(self, script: str, timeout: int) -> SandboxResult:
-        """Run shell script as subprocess."""
+        """Run shell script as a subprocess."""
         t0 = time.monotonic()
 
-        with tempfile.TemporaryDirectory(prefix="cradle_sub_") as tmpdir:
+        tmpdir = tempfile.mkdtemp(prefix="cradle_sub_")
+        try:
             script_path = os.path.join(tmpdir, "script.sh")
             with open(script_path, "w") as f:
                 f.write(script)
@@ -206,25 +200,29 @@ class Sandbox:
 
             cmd = ["bash", script_path]
             return await self._exec(cmd, timeout, t0, method="subprocess")
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
-    # ── Common execution ──
+    # ── Shared execution helpers ──
 
-    async def _exec(
-        self, cmd: list[str], timeout: int, t0: float, method: str
+    async def _exec_with_stdin(
+        self, cmd: list[str], stdin_data: str, timeout: int, t0: float, method: str
     ) -> SandboxResult:
-        """Execute a command and capture output."""
-        logger.info(f"Sandbox ({method}): running {cmd[0]} timeout={timeout}s")
+        """Execute a command, feeding data via stdin. No file mounts needed."""
+        logger.info(f"Sandbox ({method}): {cmd[0]} timeout={timeout}s stdin={len(stdin_data)}b")
 
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
 
             try:
                 stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout
+                    proc.communicate(input=stdin_data.encode("utf-8")),
+                    timeout=timeout,
                 )
             except asyncio.TimeoutError:
                 proc.kill()
@@ -278,6 +276,66 @@ class Sandbox:
                 exit_code=-3, duration_ms=duration,
             )
 
+    async def _exec(
+        self, cmd: list[str], timeout: int, t0: float, method: str
+    ) -> SandboxResult:
+        """Execute a command and capture output (no stdin)."""
+        logger.info(f"Sandbox ({method}): running {cmd[0]} timeout={timeout}s")
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            try:
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    proc.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                duration = int((time.monotonic() - t0) * 1000)
+                return SandboxResult(
+                    success=False, stdout="", method=method,
+                    stderr=f"TIMEOUT: Killed after {timeout}s",
+                    exit_code=-1, duration_ms=duration,
+                )
+
+            stdout = stdout_bytes.decode("utf-8", errors="replace")
+            stderr = stderr_bytes.decode("utf-8", errors="replace")
+
+            truncated = False
+            if len(stdout) > MAX_OUTPUT_BYTES:
+                stdout = stdout[:MAX_OUTPUT_BYTES] + "\n... [TRUNCATED]"
+                truncated = True
+
+            duration = int((time.monotonic() - t0) * 1000)
+            exit_code = proc.returncode or 0
+
+            return SandboxResult(
+                success=(exit_code == 0),
+                stdout=stdout, stderr=stderr,
+                exit_code=exit_code, duration_ms=duration,
+                truncated=truncated, method=method,
+            )
+
+        except FileNotFoundError:
+            duration = int((time.monotonic() - t0) * 1000)
+            return SandboxResult(
+                success=False, stdout="", method=method,
+                stderr=f"Command not found: {cmd[0]}",
+                exit_code=-2, duration_ms=duration,
+            )
+        except Exception as e:
+            duration = int((time.monotonic() - t0) * 1000)
+            return SandboxResult(
+                success=False, stdout="", method=method,
+                stderr=f"Sandbox error: {e}",
+                exit_code=-3, duration_ms=duration,
+            )
+
     async def pull_image(self, image: str) -> bool:
         """Pre-pull a Docker image."""
         if not await self._check_docker():
@@ -288,8 +346,16 @@ class Sandbox:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            await proc.wait()
+            await asyncio.wait_for(proc.communicate(), timeout=120)
             return proc.returncode == 0
-        except Exception as e:
-            logger.error(f"Failed to pull image {image}: {e}")
+        except Exception:
             return False
+
+    @property
+    def mode(self) -> str:
+        """Current sandbox mode description."""
+        if self._docker_available is True:
+            return "DinD (stdin pipe)"
+        elif self._docker_available is False:
+            return "subprocess fallback"
+        return "unknown (not checked yet)"
