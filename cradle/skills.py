@@ -69,10 +69,10 @@ def web_search(query: str, num_results: int = 5) -> list[dict]:
         with urllib.request.urlopen(req, timeout=10) as r:
             body = r.read().decode("utf-8", errors="replace")
         results = []
-        for m in re.finditer(
+        for m in list(re.finditer(
             r'class="result__title".*?href="([^"]+)"[^>]*>(.*?)</a>.*?class="result__snippet"[^>]*>(.*?)</span>',
             body, re.DOTALL
-        )[:num_results]:
+        ))[:num_results]:
             results.append({
                 "title": html.unescape(re.sub(r"<[^>]+>", "", m.group(2))).strip(),
                 "url": m.group(1),
