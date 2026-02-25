@@ -151,6 +151,7 @@ class Sandbox:
             "--cap-drop=ALL",
             "--memory=512m", "--cpus=1",
             "--pids-limit=100",
+            "-v", "/var/run/docker.sock:/var/run/docker.sock",
         ]
         if not network:
             docker_cmd.append("--network=none")
