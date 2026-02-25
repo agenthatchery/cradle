@@ -163,17 +163,14 @@ class Heartbeat:
                 break
             tasks_processed += 1
 
-            # ── Notify via Telegram (no code in messages!) ──
+            # Notify via Telegram — full result, no truncation (long messages are chunked by send_message)
             if task.status.value in ("completed", "failed"):
                 icon = "✅" if task.status.value == "completed" else "❌"
-                msg = f"{icon} [{task.id}]: {task.title}\n"
-                if task.status.value == "completed" and task.result:
-                    # Only first 200 chars of result — full output is in logs/GitHub
-                    summary = task.result.strip().split("\n")[0][:200]
-                    msg += f"↳ {summary}"
-                if task.status.value == "failed" and task.error:
-                    err = task.error.strip()[:200]
-                    msg += f"⚠️ {err}"
+                msg = f"{icon} [{task.id}] {task.title}\n"
+                if task.result:
+                    msg += f"\n{task.result[:3800]}"
+                if task.error:
+                    msg += f"\n⚠️ Error: {task.error[:1000]}"
                 try:
                     await self.telegram.send_message(msg)
                 except Exception:
