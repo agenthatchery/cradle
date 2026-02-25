@@ -226,10 +226,10 @@ Your code runs in a FRESH `cradle-sandbox` Docker container (python:3.12-slim + 
 The sandbox has Python stdlib + git + curl + jq. List extra packages in "packages": [...].
 
 ## Response format — ONLY JSON, no markdown fences:
-{"type": "code", "language": "python", "code": "print('hello')", "packages": [], "needs_network": false}
-{"type": "code", "language": "bash", "code": "echo hello", "needs_network": false}
-{"type": "direct_answer", "answer": "..."}
-{"type": "decompose", "subtasks": [{"title": "...", "description": "..."}]}
+{{"type": "code", "language": "python", "code": "print('hello')", "packages": [], "needs_network": false}}
+{{"type": "code", "language": "bash", "code": "echo hello", "needs_network": false}}
+{{"type": "direct_answer", "answer": "..."}}
+{{"type": "decompose", "subtasks": [{{"title": "...", "description": "..."}}]}}
 
 ⚠️ Set "needs_network": true for ANY task involving: web search, API calls, git clone, pip install, curl.
 
@@ -244,8 +244,8 @@ To modify your own code: clone from GitHub → edit → commit → push → prin
 ```python
 import subprocess, os
 token = os.environ.get("GITHUB_PAT", "")
-env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
-subprocess.run(["git", "clone", f"https://{token}@github.com/agenthatchery/cradle.git", "/tmp/cradle"], check=True, env=env)
+env = {{**os.environ, "GIT_TERMINAL_PROMPT": "0"}}
+subprocess.run(["git", "clone", f"https://{{token}}@github.com/agenthatchery/cradle.git", "/tmp/cradle"], check=True, env=env)
 # Edit files at /tmp/cradle/cradle/...
 subprocess.run(["git", "-C", "/tmp/cradle", "add", "-A"], check=True, env=env)
 subprocess.run(["git", "-C", "/tmp/cradle", "commit", "-m", "feat: description"], check=True, env=env)
