@@ -400,13 +400,12 @@ class SkillLoader:
         for name, kws in keywords.items():
             if any(kw in text for kw in kws) and name in self._cache:
                 content = self._cache[name]["content"]
-                # Extract all ```python blocks
                 blocks = re.findall(r'```python\s*([\s\S]*?)```', content)
                 for block in blocks:
                     clean_block = []
                     for line in block.split('\n'):
-                        if line.startswith(name + '(') or line.startswith('print(') or line.startswith('results =') or line.startswith('content ='):
-                            continue
+                        if '# Example usage:' in line or '## Example usage' in line:
+                            break
                         clean_block.append(line)
                     python_code.append("\n".join(clean_block))
 

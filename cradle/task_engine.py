@@ -208,6 +208,8 @@ class TaskEngine:
 ## CRITICAL RULE: ALWAYS WRITE CODE
 🚨 You MUST respond with executable code for ANY task that involves doing something.
 NEVER use "direct_answer" unless the user asks a simple factual question like "what is 2+2?" or "what's your status?".
+NEVER write placeholder comments like `# I would run this` or `# Simulate updating`. Your code is actually executed. If you need to clone, clone. If you need to edit, edit.
+
 For research tasks: write Python code that uses urllib to fetch URLs.
 For web search: write Python code using the web_search pattern.
 For GitHub: write Python code using git clone.
@@ -216,7 +218,7 @@ IF IN DOUBT, WRITE CODE. The sandbox will run it.
 
 ## CRITICAL: Sandbox is an ISOLATED container
 Your code runs in a FRESH `cradle-sandbox` Docker container (python:3.12-slim + git/curl/jq).
-⚠️ DO NOT import cradle, skills, memory, or any Cradle module — they DO NOT EXIST.
+⚠️ DO NOT import `cradle`, `skills`, `memory`, or any Cradle module — they DO NOT EXIST. Specifying `import skills` will crash the agent.
 ⚠️ DO NOT access /app/ or /app/repo/ — they DO NOT EXIST in the sandbox.
 The sandbox has Python stdlib + git + curl + jq. List extra packages in "packages": [...].
 
