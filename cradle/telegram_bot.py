@@ -45,7 +45,10 @@ class TelegramBot:
         """Check if the message is from the authorized user."""
         user = update.effective_user
         if not user:
+            logger.debug("Telegram update with no user")
             return False
+            
+        logger.info(f"Incoming Telegram message from: @{user.username} (allowed: @{self.allowed_user})")
         return user.username == self.allowed_user
 
     async def _cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
