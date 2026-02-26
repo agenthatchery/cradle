@@ -187,10 +187,10 @@ import os, subprocess, tempfile, shutil, json
 
 def spawn_agent(
     github_repo: str,
-    command: list[str],
+    command: list[str] = None,
     input_data: str = "",
     image: str = None,
-    timeout: int = 120,
+    timeout: int = 300,
 ) -> dict:
     \"\"\"
     Clone a GitHub repo and run it as a Docker sub-agent.
@@ -198,11 +198,12 @@ def spawn_agent(
     Args:
         github_repo: e.g. "matebenyovszky/healing-agent"
         command: command to run inside container, e.g. ["python", "main.py"]
+                 Optional: if None, attempts to detect from project type.
         input_data: optional input to write to /workspace/input.txt
         image: Docker image name (if None, attempts to build from Dockerfile)
-        timeout: max seconds to wait
+        timeout: max seconds to wait (default 300 for builds)
     
-    Returns: {"success": bool, "stdout": str, "stderr": str}
+    Returns: {"success": bool, "stdout": str, "stderr": str, "detected_type": str}
     \"\"\"
     tmpdir = tempfile.mkdtemp(prefix="cradle_agent_")
     try:
@@ -218,6 +219,23 @@ def spawn_agent(
         if result.returncode != 0:
             return {"success": False, "stdout": "", "stderr": f"Clone failed: {result.stderr}"}
         
+        # Detect Project Type and Dockerfile
+        detected_type = "unknown"
+        dockerfile_path = None
+        
+        # 1. Look for Dockerfile recursively (prioritize container/ if exists)
+        for root, dirs, files in os.walk(repo_dir):
+            if "Dockerfile" in files:
+                dockerfile_path = os.path.join(root, "Dockerfile")
+                if "container" in root or "docker" in root:
+                    break # Prefer these
+        
+        if os.path.exists(os.path.join(repo_dir, "package.json")):
+            detected_type = "nodejs"
+        elif os.path.exists(os.path.join(repo_dir, "requirements.txt")) or \
+             os.path.exists(os.path.join(repo_dir, "pyproject.toml")):
+            detected_type = "python"
+        
         # Write input if provided
         results_dir = os.path.join(tmpdir, "results")
         os.makedirs(results_dir, exist_ok=True)
@@ -226,22 +244,40 @@ def spawn_agent(
                 f.write(input_data)
         
         # Build image if Dockerfile exists and no image specified
-        if image is None and os.path.exists(os.path.join(repo_dir, "Dockerfile")):
+        build_context = repo_dir
+        if image is None and dockerfile_path:
             image = f"cradle-subagent-{github_repo.replace('/', '-').lower()}"
+            build_context = os.path.dirname(dockerfile_path)
             build = subprocess.run(
-                ["docker", "build", "-t", image, repo_dir],
-                capture_output=True, text=True, timeout=120
+                ["docker", "build", "-t", image, build_context],
+                capture_output=True, text=True, timeout=300
             )
             if build.returncode != 0:
-                # Fallback to python image
-                image = "python:3.12-slim"
+                return {"success": False, "stdout": build.stdout, "stderr": f"Build failed: {build.stderr}"}
         elif image is None:
-            image = "python:3.12-slim"
+            # Fallback based on type
+            if detected_type == "nodejs":
+                image = "node:20-slim"
+            else:
+                image = "python:3.12-slim"
         
+        # Resolve default command
+        if not command:
+            if detected_type == "nodejs":
+                command = ["npm", "start"]
+            else:
+                # Try to find a main.py
+                main_path = None
+                for root, dirs, files in os.walk(repo_dir):
+                    if "main.py" in files:
+                        main_path = os.path.relpath(os.path.join(root, "main.py"), repo_dir)
+                        break
+                command = ["python", main_path] if main_path else ["python", "main.py"]
+
         # Run the sub-agent
         docker_cmd = [
             "docker", "run", "--rm",
-            "--memory=512m", "--cpus=2",
+            "--memory=1g", "--cpus=2",
             "-v", f"{repo_dir}:/workspace",
             "-v", f"{results_dir}:/results",
             "-w", "/workspace",
@@ -263,6 +299,8 @@ def spawn_agent(
             "success": proc.returncode == 0,
             "stdout": proc.stdout[:10000] + output_extra,
             "stderr": proc.stderr[:3000],
+            "detected_type": detected_type,
+            "command_run": " ".join(command)
         }
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)

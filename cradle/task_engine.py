@@ -253,6 +253,12 @@ subprocess.run(["git", "-C", "/tmp/cradle", "push", "origin", "main"], check=Tru
 print("SELF_UPDATE_PUSHED")
 ```
 
+## Spawning Excellence:
+Before using `spawn_agent`, research the repository structure:
+1. Use `github_read_file` or a bash command to check for `package.json` (Node), `requirements.txt` (Python), or `Dockerfile`.
+2. For `qwibitai/nanoclaw` or `anomalyco/opencode`: These are Node.js projects. If no Dockerfile is found, use an image like `node:20-slim` and a command like `["npm", "start"]`.
+3. NEVER assume `main.py` exists in the root of a repository. Research first!
+
 Output ONLY raw JSON. No markdown fences. No explanation before or after."""
 
         # Inject skill details directly into prompt for maximum relevance
