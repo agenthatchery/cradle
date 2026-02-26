@@ -280,6 +280,7 @@ def spawn_agent(
             "--memory=1g", "--cpus=2",
             "-v", f"{repo_dir}:/workspace",
             "-v", f"{results_dir}:/results",
+            "-v", "/var/run/docker.sock:/var/run/docker.sock",
             "-w", "/workspace",
             "--env", f"GITHUB_PAT={token}",
         ] + [image] + command
