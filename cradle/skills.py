@@ -336,6 +336,52 @@ print(result["stdout"][:3000])
 - Timeout default is 120s — increase for heavy tasks
 """,
     },
+    {
+        "name": "perform_audit",
+        "description": "Analyze real-world LLM provider performance (latency, cost, success rate) from audit logs. Use this to optimize provider priority or audit costs.",
+        "content": """\
+---
+name: perform_audit
+description: Analyze LLM performance logs and generate an optimization report.
+---
+
+# Perform Audit Skill
+
+Use this skill to see how your LLM providers (Gemini, Groq, OpenAI, etc.) are actually performing in the real world.
+
+## How to Use
+
+Write Python code that imports the auditor and generates a report:
+
+```python
+import os
+from cradle.audit import LLMAuditor
+
+def run_audit() -> str:
+    # Path to the audit log (default in Cradle)
+    log_path = os.path.join(os.getenv("DATA_DIR", "/app/data"), "llm_audit.jsonl")
+    
+    if not os.path.exists(log_path):
+        return "No audit logs found yet. Run more tasks first!"
+        
+    auditor = LLMAuditor(log_path)
+    report = auditor.generate_report()
+    return report
+
+report = run_audit()
+print(report)
+
+# To persist this report to AgentPlaybooks memory:
+# Use the memory skill patterns if available, or simply print the report
+# so the agent can use it in its next thinking cycle.
+```
+
+## Key Notes
+- This skill uses REAL data collected from your actual LLM calls.
+- Use the results to suggest changing `priority` in your config if a provider is failing often.
+- High latency on a "fast" provider like Groq might indicate rate limiting.
+""",
+    },
 ]
 
 

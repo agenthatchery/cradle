@@ -48,11 +48,16 @@ class LLMRouter:
     DEMOTION_COOLDOWN_SECS = 300  # 5 minutes before retrying a demoted provider
 
     def __init__(self, config: Config):
+        self.config = config
         self.providers = config.llm_providers
         self.stats = UsageStats()
         self._client = httpx.AsyncClient(timeout=120.0)
         self._consecutive_failures: dict[str, int] = {}
         self._demoted_until: dict[str, float] = {}  # provider_name -> timestamp
+        
+        # Ensure log directory exists
+        self.audit_log_path = os.path.join(config.data_dir, "llm_audit.jsonl")
+        os.makedirs(os.path.dirname(self.audit_log_path), exist_ok=True)
 
     async def close(self):
         await self._client.aclose()
@@ -109,6 +114,19 @@ class LLMRouter:
                     f"tokens={response.input_tokens}+{response.output_tokens} "
                     f"latency={response.latency_ms}ms cost=${response.cost_usd:.4f}"
                 )
+                
+                # Audit log
+                self._log_audit({
+                    "timestamp": time.time(),
+                    "provider": provider.name,
+                    "model": provider.model,
+                    "success": True,
+                    "latency_ms": response.latency_ms,
+                    "input_tokens": response.input_tokens,
+                    "output_tokens": response.output_tokens,
+                    "cost_usd": response.cost_usd
+                })
+                
                 return response
 
             except Exception as e:
@@ -127,6 +145,16 @@ class LLMRouter:
                         f"after {self._consecutive_failures[provider.name]} consecutive failures"
                     )
                 logger.warning(f"Provider {provider.name} failed: {e}, trying next...")
+                
+                # Audit log (failure)
+                self._log_audit({
+                    "timestamp": time.time(),
+                    "provider": provider.name,
+                    "model": provider.model,
+                    "success": False,
+                    "error": str(e)
+                })
+                
                 continue
 
         raise RuntimeError(f"All LLM providers failed. Last error: {last_error}")
@@ -266,3 +294,11 @@ class LLMRouter:
         if s.errors_by_provider:
             lines.append(f"  Errors: {s.errors_by_provider}")
         return "\n".join(lines)
+
+    def _log_audit(self, entry: dict):
+        """Append an entry to the JSONL audit log."""
+        try:
+            with open(self.audit_log_path, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+        except Exception as e:
+            logger.error(f"Failed to write to audit log: {e}")
