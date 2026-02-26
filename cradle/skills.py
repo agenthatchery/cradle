@@ -275,6 +275,14 @@ def spawn_agent(
                 command = ["python", main_path] if main_path else ["python", "main.py"]
 
         # Run the sub-agent
+        env_vars = [
+            "GITHUB_PAT", "GITHUB_ORG", "GITHUB_REPO",
+            "GEMINI_API_KEY", "GEMINI_MODEL", "OPENAI_API_KEY",
+            "MINIMAX_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY",
+            "SUPABASE_KEY", "AGENTPLAYBOOKS_KEY", "AGENTPLAYBOOKS_GUID",
+            "AGENTPLAYBOOKS_PLAYBOOK_ID", "GOOGLE_CSE_KEY", "GOOGLE_CSE_ID"
+        ]
+        
         docker_cmd = [
             "docker", "run", "--rm",
             "--memory=1g", "--cpus=2",
@@ -282,8 +290,14 @@ def spawn_agent(
             "-v", f"{results_dir}:/results",
             "-v", "/var/run/docker.sock:/var/run/docker.sock",
             "-w", "/workspace",
-            "--env", f"GITHUB_PAT={token}",
-        ] + [image] + command
+        ]
+        
+        for ev in env_vars:
+            val = os.getenv(ev)
+            if val:
+                docker_cmd.extend(["--env", f"{ev}={val}"])
+
+        docker_cmd += [image] + command
         
         proc = subprocess.run(
             docker_cmd, capture_output=True, text=True, timeout=timeout
