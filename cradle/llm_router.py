@@ -6,6 +6,7 @@ Each provider has different API conventions — this module normalizes them.
 
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Optional
