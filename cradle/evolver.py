@@ -81,7 +81,7 @@ class Evolver:
             # Step 4: Test the proposed changes in sandbox (if test code provided)
             test_code = proposal.get("test_code", "")
             if test_code:
-                test_ok = await self._test_proposal(test_code)
+                test_ok = await self._test_proposal(proposal, source_files)
                 if not test_ok:
                     # Store the failure as a learning
                     await self.memory.store(
@@ -299,12 +299,32 @@ Propose ONE improvement. Output ONLY a JSON object."""
 
         return None
 
-    async def _test_proposal(self, test_code: str) -> bool:
+    async def _test_proposal(self, proposal: dict, source_files: dict) -> bool:
         """Test the proposed changes in a sandbox."""
+        test_code = proposal.get("test_code", "")
         if not test_code.strip():
             return True  # Accept if no tests needed
 
-        result = await self.sandbox.run_python(test_code, timeout=30, network=False)
+        # Step 1: Prepare the test environment in the sandbox.
+        # Since the sandbox is isolated, we need to inject the proposed changes
+        # and the existing cradle codebase so the test can 'import cradle'.
+        
+        # Merge proposed changes into source_files
+        test_files = source_files.copy()
+        for path, content in proposal.get("files", {}).items():
+            test_files[path] = content
+
+        # Create injection script to write these files in the sandbox
+        injection = "import os\n"
+        for path, content in test_files.items():
+            if "/" in path:
+                injection += f"os.makedirs({repr(os.path.dirname(path))}, exist_ok=True)\n"
+            injection += f"with open({repr(path)}, 'w') as f: f.write({repr(content)})\n"
+        
+        full_test_code = injection + "\n" + test_code
+        
+        logger.info(f"Testing evolution proposal with injection ({len(test_files)} files)...")
+        result = await self.sandbox.run_python(full_test_code, timeout=60, network=False)
 
         if result.success:
             logger.info("Evolution proposal passed tests")

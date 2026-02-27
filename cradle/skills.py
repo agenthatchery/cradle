@@ -415,6 +415,15 @@ class SkillLoader:
         self._loaded = True
         return count
 
+    async def sync_with_remote(self):
+        """Standard sync method used by Heartbeat. Merges built-ins and remote extra skills."""
+        # 1. Ensure built-ins are cached (idempotent)
+        self.load_builtin_skills_local()
+        # 2. Upload built-ins to remote (idempotent, server-side duplicate check)
+        await self.sync_builtin_skills()
+        # 3. Pull any extra skills from remote
+        await self.fetch_from_agentplaybooks()
+
     def load_builtin_skills_local(self):
         """Load built-in skills from local definitions (no network)."""
         for skill in BUILTIN_SKILLS:
