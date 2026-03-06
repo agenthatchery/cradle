@@ -57,40 +57,73 @@ class Evolver:
             if not source_files:
                 return "❌ Evolution failed: could not read source files"
 
-            # Step 2: Ask LLM for improvement
-            proposal = await self._propose_improvement(source_files)
-            if not proposal:
-                return "🤷 No improvements proposed this cycle"
+            # Wrapper loop for up to 3 attempts (Recursive Self-Improvement)
+            max_attempts = 3
+            feedback = None
+            proposal = None
+            previous_proposal = None
+            test_ok = False
+            files_to_push = {}
+            description = ""
+            branch_name = f"evolve-{self.evolution_count}-{int(time.time())}"
+            
+            for attempt in range(max_attempts):
+                logger.info(f"Evolution proposal attempt {attempt + 1}/{max_attempts}")
+                
+                # Step 2: Ask LLM for improvement
+                proposal = await self._propose_improvement(source_files, feedback=feedback, previous_proposal=previous_proposal)
+                if not proposal:
+                    if attempt == 0:
+                        return "🤷 No improvements proposed this cycle"
+                    else:
+                        logger.warning("Failed to correct proposal, aborting retry loop.")
+                        break
+                        
+                description = proposal.get("description", "improvement")
+                files_to_push = proposal.get("files", {})
+                if not files_to_push:
+                    if attempt == 0:
+                        return "🤷 No file changes in proposal"
+                    else:
+                        break
 
-            description = proposal.get("description", "improvement")
-            files_to_push = proposal.get("files", {})
-            if not files_to_push:
-                return "🤷 No file changes in proposal"
+                # Step 3: Validate — don't touch critical files
+                PROTECTED = {"cradle/main.py", "cradle/config.py", "cradle/evolver.py",
+                             "main.py", "config.py", "evolver.py", "Dockerfile", "entrypoint.sh"}
+                for path in list(files_to_push.keys()):
+                    if path in PROTECTED or os.path.basename(path) in PROTECTED:
+                        logger.warning(f"Removing protected file from proposal: {path}")
+                        del files_to_push[path]
 
-            # Step 3: Validate — don't touch critical files
-            PROTECTED = {"cradle/main.py", "cradle/config.py", "cradle/evolver.py",
-                         "main.py", "config.py", "evolver.py", "Dockerfile", "entrypoint.sh"}
-            for path in list(files_to_push.keys()):
-                if path in PROTECTED or os.path.basename(path) in PROTECTED:
-                    logger.warning(f"Removing protected file from proposal: {path}")
-                    del files_to_push[path]
+                if not files_to_push:
+                    if attempt == 0:
+                        return "🤷 All proposed files are protected — skipping"
+                    else:
+                        break
 
-            if not files_to_push:
-                return "🤷 All proposed files are protected — skipping"
-
-            # Step 4: Test the proposed changes in sandbox (if test code provided)
-            test_code = proposal.get("test_code", "")
-            if test_code:
-                test_ok = await self._test_proposal(proposal, source_files)
-                if not test_ok:
-                    # Store the failure as a learning
-                    await self.memory.store(
-                        key=f"evolution_failure:{self.evolution_count}",
-                        value={"description": description, "reason": "test_failed"},
-                        tags=["evolution", "failure"],
-                        tier="contextual",
-                    )
-                    return f"⚠️ Proposed changes failed testing: {description}"
+                # Step 4: Test the proposed changes in sandbox (if test code provided)
+                test_code = proposal.get("test_code", "")
+                if test_code:
+                    test_ok, test_stderr = await self._test_proposal(proposal, source_files)
+                    if not test_ok:
+                        feedback = test_stderr
+                        previous_proposal = proposal
+                        logger.warning(f"Test failed on attempt {attempt + 1}. Feedback length: {len(test_stderr)}")
+                    else:
+                        break # Success!
+                else:
+                    test_ok = True
+                    break # No tests needed
+            
+            if not test_ok:
+                # Store the failure as a learning after retries exhausted
+                await self.memory.store(
+                    key=f"evolution_failure:{self.evolution_count}",
+                    value={"description": description, "reason": "test_failed_after_retries", "last_error": feedback[:500] if feedback else ""},
+                    tags=["evolution", "failure"],
+                    tier="contextual",
+                )
+                return f"⚠️ Proposed changes failed testing after {max_attempts} attempts: {description}"
 
             # Step 5: Push to GitHub branch via API and merge
             logger.info(f"Pushing evolution to branch {branch_name}: {description}")
@@ -176,7 +209,7 @@ class Evolver:
 
         return files
 
-    async def _propose_improvement(self, source_files: dict[str, str]) -> Optional[dict]:
+    async def _propose_improvement(self, source_files: dict[str, str], feedback: str = None, previous_proposal: dict = None) -> Optional[dict]:
         """Ask the LLM to propose an improvement to the codebase."""
         # Get past learnings and evolution history for context
         learnings = await self.memory.get_learnings()
@@ -227,8 +260,22 @@ CRITICAL: Output ONLY the JSON. No ```json fences, no explanation text. Just the
 {past_evolutions or "None yet"}
 
 # Evolution count: {self.evolution_count}
+"""
+        if feedback and previous_proposal:
+            prompt += f"""
+# LAST PROPOSAL FAILED
+Your previous proposal failed testing with this error:
+```
+{feedback[:1000]}
+```
 
-Propose ONE improvement. Output ONLY a JSON object."""
+Previous proposal files:
+{json.dumps(previous_proposal.get("files", {}), indent=2)[:2000]}
+
+Please FIX the error and provide a corrected proposal. output ONLY a JSON object.
+"""
+        else:
+            prompt += "\nPropose ONE improvement. Output ONLY a JSON object."
 
         try:
             response = await self.llm.complete(prompt, system=system, max_tokens=8192)
@@ -299,11 +346,11 @@ Propose ONE improvement. Output ONLY a JSON object."""
 
         return None
 
-    async def _test_proposal(self, proposal: dict, source_files: dict) -> bool:
+    async def _test_proposal(self, proposal: dict, source_files: dict) -> tuple[bool, str]:
         """Test the proposed changes in a sandbox."""
         test_code = proposal.get("test_code", "")
         if not test_code.strip():
-            return True  # Accept if no tests needed
+            return True, ""  # Accept if no tests needed
 
         # Step 1: Prepare the test environment in the sandbox.
         # Since the sandbox is isolated, we need to inject the proposed changes
@@ -323,12 +370,22 @@ Propose ONE improvement. Output ONLY a JSON object."""
         
         full_test_code = injection + "\n" + test_code
         
-        logger.info(f"Testing evolution proposal with injection ({len(test_files)} files)...")
-        result = await self.sandbox.run_python(full_test_code, timeout=60, network=False)
+        # Extract dependencies from requirements.txt to install in sandbox
+        req_content = source_files.get("requirements.txt", "")
+        packages = [line.strip() for line in req_content.split("\n") if line.strip() and not line.startswith("#")]
+
+        logger.info(f"Testing evolution proposal with injection ({len(test_files)} files and {len(packages)} packages)...")
+        result = await self.sandbox.run_python(
+            full_test_code, 
+            timeout=120, 
+            packages=packages, 
+            network=True
+        )
 
         if result.success:
             logger.info("Evolution proposal passed tests")
-            return True
+            return True, ""
         else:
-            logger.warning(f"Evolution proposal failed tests: {result.stderr[:500]}")
-            return False
+            error_msg = result.stderr[:1000] if result.stderr else result.stdout[:1000]
+            logger.warning(f"Evolution proposal failed tests. Error: {error_msg[:100]}")
+            return False, error_msg
