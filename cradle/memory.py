@@ -85,10 +85,16 @@ class Memory:
 
     async def _rest_get(self, path: str, params: Optional[dict] = None) -> Optional[Any]:
         """GET request to REST API."""
-        if not self.guid:
+        playbook_id = self.config.agentplaybooks_playbook_id
+        if not playbook_id:
+            playbook_id = self.guid # fallback
+            
+        if not playbook_id:
             return None
 
-        url = f"{BASE_URL}/api/playbooks/{self.guid}/{path}"
+        # Some paths might not need a trailing slash if empty, normalize it
+        url_path = f"/{path}" if path else ""
+        url = f"{BASE_URL}/api/playbooks/{playbook_id}{url_path}"
         try:
             resp = await self._client.get(url, params=params, headers=self._auth_headers())
             resp.raise_for_status()

@@ -230,12 +230,12 @@ IMPORTANT RULES:
 2. The proposed file must contain the COMPLETE new content — not a diff
 3. Only propose LOW or MEDIUM risk changes
 4. NEVER modify: main.py, config.py, evolver.py, Dockerfile, entrypoint.sh
-5. Focus on changes that make the agent MORE CAPABLE:
+5. 🚨 DO NOT attempt to rewrite the entire `cradle/skills.py` file to add a skill, as generating huge markdown strings breaks JSON parsing. Keep PRs minimal, such as bug fixes or adding actual Python logic to `cradle/sandbox.py` or `cradle/task_engine.py`.
+6. Focus on changes that make the agent MORE CAPABLE:
    - Better error handling in sandbox.py or task_engine.py
-   - New or improved skills in skills.py
    - Better memory usage in heartbeat.py
    - Improved LLM prompt engineering
-   - New built-in capabilities
+   - Performance optimizations
 
 Respond with a SINGLE JSON object (no markdown fences, no commentary before/after):
 {"description": "Brief description", "files": {"cradle/filename.py": "full file content"}, "test_code": "python code that exits 0 on success", "risk": "low"}
