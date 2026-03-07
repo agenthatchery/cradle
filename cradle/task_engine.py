@@ -205,8 +205,9 @@ class TaskEngine:
             skill_details = self.skills.get_relevant_skills(task.title, task.description)
 
         # Use dynamic persona from AgentPlaybooks if available, fallback to hardcoded
-        persona_base = self.dynamic_persona or """You are Cradle, a fully autonomous self-evolving AI agent running inside Docker."""
-        system = f"""{persona_base}
+        system = self.dynamic_persona
+        if not system:
+            system = """You are Cradle, a fully autonomous self-evolving AI agent running inside Docker.
 
 ## CRITICAL RULE: ALWAYS WRITE CODE
 🚨 You MUST respond with executable code for ANY task that involves doing something.
@@ -244,8 +245,8 @@ To modify your own code: clone from GitHub → edit → commit → push → prin
 ```python
 import subprocess, os
 token = os.environ.get("GITHUB_PAT", "")
-env = {{**os.environ, "GIT_TERMINAL_PROMPT": "0"}}
-subprocess.run(["git", "clone", f"https://{{token}}@github.com/agenthatchery/cradle.git", "/tmp/cradle"], check=True, env=env)
+env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+subprocess.run(["git", "clone", f"https://{token}@github.com/agenthatchery/cradle.git", "/tmp/cradle"], check=True, env=env)
 # Edit files at /tmp/cradle/cradle/...
 subprocess.run(["git", "-C", "/tmp/cradle", "add", "-A"], check=True, env=env)
 subprocess.run(["git", "-C", "/tmp/cradle", "commit", "-m", "feat: description"], check=True, env=env)
