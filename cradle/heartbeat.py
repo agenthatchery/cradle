@@ -206,7 +206,9 @@ class Heartbeat:
         logger.debug(f"Heartbeat pulse #{self.beat_count}...")
 
         # Step 1: Process all pending tasks
-        await self.task_engine.process_all_pending_tasks()
+        # Corrected: TaskEngine has process_next, not process_all_pending_tasks
+        while self.task_engine.pending_count > 0:
+            await self.task_engine.process_next()
 
         # Step 2: Periodic Health Check (every 50 beats)
         if self.beat_count % 50 == 0:
