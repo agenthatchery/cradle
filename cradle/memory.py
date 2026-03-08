@@ -234,18 +234,29 @@ class Memory:
 
     async def store_skill(self, name: str, content: str, description: str = "") -> bool:
         """Create or update a skill via MCP. deduplicates by name."""
-        # Check if exists
-        skills = await self.list_skills()
-        exists = any(s.get("name") == name for s in skills)
+        # Use list_tools instead of list_skills because skill-tools are registered as tools
+        tools = await self.list_tools()
+        # Skills in AgentPlaybooks have "skill_" prefix in the tool name
+        tool_name = f"skill_{name}"
+        exists = any(t.get("name") == tool_name for t in tools)
         
-        tool = "update_skill" if exists else "create_skill"
-        result = await self._mcp_call(tool, {
-            "name": name,
-            "content": content,
-            "description": description or name,
-        })
+        if exists:
+            # Update existing
+            result = await self._mcp_call("update_skill", {
+                "skill_id": name, # or tool_name
+                "content": content,
+                "description": description or name
+            })
+        else:
+            # Create new
+            result = await self._mcp_call("create_skill", {
+                "name": name,
+                "content": content,
+                "description": description or name,
+            })
+        
         if result is not None:
-            logger.info(f"Skill {tool}ed: {name}")
+            logger.info(f"Skill {'updated' if exists else 'created'}: {name}")
             return True
         return False
 
@@ -262,6 +273,29 @@ class Memory:
                         except json.JSONDecodeError:
                             return []
         return []
+
+    async def delete_skill(self, name: str) -> bool:
+        """Delete a skill/tool from AgentPlaybooks."""
+        result = await self._mcp_call("delete_skill", {"name": name})
+        return result is not None
+
+    async def list_tools(self) -> list:
+        """List all available MCP tools."""
+        url = f"{BASE_URL}/api/mcp/{self.guid}"
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._next_rpc_id(),
+            "method": "tools/list",
+            "params": {},
+        }
+        try:
+            resp = await self._client.post(url, json=payload, headers=self._auth_headers())
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("result", {}).get("tools", [])
+        except Exception as e:
+            logger.error(f"MCP list_tools failed: {e}")
+            return []
 
     # ── Reflection & Learning Storage ──
 

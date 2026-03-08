@@ -295,7 +295,34 @@ class Heartbeat:
                     batch = delete_tasks[i:i+10]
                     await getattr(asyncio, "gather")(*batch, return_exceptions=True)
                 
-                logger.info(f"✅ Memory health check completed. Pruned {len(delete_tasks)} items.")
+                logger.info(f"✅ Memory health check: Pruned {len(delete_tasks)} old memories.")
+
+            # ── Deduplicate Skill Tools ──
+            try:
+                tools = await self.memory.list_tools()
+                if not tools:
+                    return
+
+                tool_counts = {}
+                for t in tools:
+                    name = t.get("name", "")
+                    if name.startswith("skill_"):
+                        # Extract the base name (e.g., 'web_search' from 'skill_web_search')
+                        # Note: In AgentPlaybooks, delete_skill(name='web_search') deletes 
+                        # one instance of the tool named 'skill_web_search'.
+                        base_name = name[6:] 
+                        tool_counts[base_name] = tool_counts.get(base_name, 0) + 1
+
+                for base_name, count in tool_counts.items():
+                    if count > 1:
+                        logger.info(f"Found {count} duplicates of skill_{base_name}. Pruning {count-1}...")
+                        for _ in range(count - 1):
+                            await self.memory.delete_skill(base_name)
+                
+            except Exception as e:
+                logger.error(f"Skill deduplication failed: {e}")
+
+            logger.info("✅ Memory health check completed.")
                 
         except Exception as e:
             logger.error(f"Memory health check failed: {e}")
