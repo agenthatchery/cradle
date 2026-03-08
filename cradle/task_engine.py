@@ -235,7 +235,8 @@ The sandbox has Python stdlib + git + curl + jq. List extra packages in "package
 ⚠️ Set "needs_network": true for ANY task involving: web search, API calls, git clone, pip install, curl.
 
 ## Environment variables available in sandbox:
-- GITHUB_PAT — for git clone https://$GITHUB_PAT@github.com/...
+- CRADLE_GIT_URL — Fully authenticated URL to clone your own repository: git clone $CRADLE_GIT_URL /tmp/cradle
+- GITHUB_PAT — for authenticating GitHub API calls or cloning other repos
 - AGENTPLAYBOOKS_API_KEY + AGENTPLAYBOOKS_PLAYBOOK_GUID — AgentPlaybooks.ai MCP
 - GEMINI_API_KEY — call Gemini directly
 - GOOGLE_CSE_KEY + GOOGLE_CSE_ID — Google Custom Search
@@ -244,9 +245,9 @@ The sandbox has Python stdlib + git + curl + jq. List extra packages in "package
 To modify your own code: clone from GitHub → edit → commit → push → print("SELF_UPDATE_PUSHED")
 ```python
 import subprocess, os
-token = os.environ.get("GITHUB_PAT", "")
 env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
-subprocess.run(["git", "clone", f"https://{token}@github.com/agenthatchery/cradle.git", "/tmp/cradle"], check=True, env=env)
+repo_url = os.environ.get("CRADLE_GIT_URL", "")
+subprocess.run(["git", "clone", repo_url, "/tmp/cradle"], check=True, env=env)
 # Edit files at /tmp/cradle/cradle/...
 subprocess.run(["git", "-C", "/tmp/cradle", "add", "-A"], check=True, env=env)
 subprocess.run(["git", "-C", "/tmp/cradle", "commit", "-m", "feat: description"], check=True, env=env)

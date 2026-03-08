@@ -154,9 +154,15 @@ class Sandbox:
             "-v", "/var/run/docker.sock:/var/run/docker.sock",
         ]
         
-        # Inject GitHub token for self-evolution push access
+        # Inject GitHub credentials for self-evolution
         if "GITHUB_PAT" in os.environ:
-            docker_cmd.extend(["-e", f"GITHUB_PAT={os.environ['GITHUB_PAT']}"])
+            pat = os.environ['GITHUB_PAT']
+            org = os.environ.get('GITHUB_ORG', 'agenthatchery')
+            repo = os.environ.get('GITHUB_REPO', 'cradle')
+            docker_cmd.extend([
+                "-e", f"GITHUB_PAT={pat}",
+                "-e", f"CRADLE_GIT_URL=https://{pat}@github.com/{org}/{repo}.git"
+            ])
         if not network:
             docker_cmd.append("--network=none")
         else:
