@@ -160,7 +160,7 @@ class Heartbeat:
         self._self_improvement_task_idx = 0
 
         # Bootstrap initial self-improvement tasks if no tasks exist
-        if not self.task_engine.tasks:
+        if self.task_engine.pending_count == 0:
             logger.info("Bootstrapping initial self-improvement tasks...")
             for task_data in SELF_IMPROVEMENT_TASKS:
                 self.task_engine.add_task(
@@ -206,7 +206,6 @@ class Heartbeat:
         logger.debug(f"Heartbeat pulse #{self.beat_count}...")
 
         # Step 1: Process all pending tasks
-        # Corrected: TaskEngine has process_next, not process_all_pending_tasks
         while self.task_engine.pending_count > 0:
             await self.task_engine.process_next()
 
@@ -214,8 +213,8 @@ class Heartbeat:
         if self.beat_count % 50 == 0:
             await self._check_memory_health()
 
-        # Step 3: Auto-generate improvement tasks if idle and not busy
-        if not self.task_engine.has_pending_tasks() and not self.task_engine.is_busy():
+        # Step 3: Auto-generate improvement tasks if idle
+        if self.task_engine.pending_count == 0:
             await self._propose_self_improvement_task()
 
         # Step 4: Trigger periodic self-evolution
@@ -254,7 +253,6 @@ class Heartbeat:
             if duplicates:
                 logger.info(f"🔍 Found {len(duplicates)} duplicate skill tools. Cleaning up...")
                 for d in duplicates:
-                    # delete_skill takes the base name (without skill_ prefix) or ID
                     base_name = d['name'].replace('skill_', '')
                     await self.memory.delete_skill(base_name)
                 logger.info(f"✨ Purged {len(duplicates)} duplicate skill tools")
@@ -264,7 +262,7 @@ class Heartbeat:
 
     async def _propose_self_improvement_task(self):
         """Propose a new self-improvement task if none are pending."""
-        if self.task_engine.has_pending_tasks():
+        if self.task_engine.pending_count > 0:
             return
         
         task_data = SELF_IMPROVEMENT_TASKS[self._self_improvement_task_idx]
