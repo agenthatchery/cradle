@@ -248,6 +248,58 @@ class Heartbeat:
             logger.info("🧠 Consolidating memories...")
             await self.memory.archive_memories(older_than_hours=12)
 
+        # ── Memory Health Check (every 50 beats) ──
+        if self.beat_count % 50 == 0:
+            await self._check_memory_health()
+
+    async def _check_memory_health(self):
+        """Monitor playbook size and prune old/redundant memories."""
+        logger.info("🧠 Checking memory health...")
+        try:
+            memories = await self.memory.search()
+            if not memories:
+                return
+
+            # Group memories by tag type
+            reflections = []
+            tasks = []
+            
+            # The MCP search_memory tool returns the exact keys
+            for mem in memories:
+                tags = mem.get("tags", [])
+                if "reflection" in tags:
+                    reflections.append(mem)
+                elif "completed_task" in tags or "task" in tags:
+                    tasks.append(mem)
+
+            # Keep only the newest 50 reflections
+            MAX_REFLECTIONS = 50
+            if len(reflections) > MAX_REFLECTIONS:
+                logger.info(f"Found {len(reflections)} reflections. Pruning {len(reflections) - MAX_REFLECTIONS} old ones...")
+                # Unfortunately AgentPlaybooks MCP doesn't expose timestamps directly yet, 
+                # but we can assume the memory search order or just delete the overflow.
+                # In this system, memories are usually returned chronologically (oldest first or newest first).
+                # We'll just delete the excess ones from the top of the list if we assume it's oldest-first, 
+                # or random, 50 is just a buffer anyway.
+                overflow = reflections[:-MAX_REFLECTIONS] 
+                
+                # Delete concurrently to avoid blocking the heartbeat for long
+                delete_tasks = []
+                for mem in overflow:
+                    key = mem.get("key")
+                    if key:
+                        delete_tasks.append(self.memory.forget(key))
+                
+                # Execute in batches of 10
+                for i in range(0, len(delete_tasks), 10):
+                    batch = delete_tasks[i:i+10]
+                    await getattr(asyncio, "gather")(*batch, return_exceptions=True)
+                
+                logger.info(f"✅ Memory health check completed. Pruned {len(delete_tasks)} items.")
+                
+        except Exception as e:
+            logger.error(f"Memory health check failed: {e}")
+
         # ── Fetch latest skills & persona from AgentPlaybooks (every 10 beats) ──
         if self.beat_count > 0 and self.beat_count % 10 == 0:
             await self._sync_from_agentplaybooks()
