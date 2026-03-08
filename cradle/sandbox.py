@@ -153,6 +153,10 @@ class Sandbox:
             "--pids-limit=100",
             "-v", "/var/run/docker.sock:/var/run/docker.sock",
         ]
+        
+        # Inject GitHub token for self-evolution push access
+        if "GITHUB_PAT" in os.environ:
+            docker_cmd.extend(["-e", f"GITHUB_PAT={os.environ['GITHUB_PAT']}"])
         if not network:
             docker_cmd.append("--network=none")
         else:
