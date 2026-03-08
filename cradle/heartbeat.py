@@ -4,6 +4,7 @@ import time
 import json
 import os
 import cradle # Import the cradle package to access __version__
+from typing import Optional
 
 from cradle.config import Config
 from cradle.task_engine import TaskEngine
@@ -18,7 +19,6 @@ CRADLE_CURRENT_VERSION = cradle.__version__
 
 # Self-improvement task templates — the agent cycles through these
 SELF_IMPROVEMENT_TASKS = [
-
     {
         "title": "Update Cradle version and push to GitHub",
         "description": f"Increment the version number in cradle/__init__.py from {CRADLE_CURRENT_VERSION} to the next patch version (e.g., from 0.1.0 to 0.1.1), commit the change, and push to GitHub. This proves you can successfully edit your own source code and deploy updates.",
@@ -117,7 +117,7 @@ SELF_IMPROVEMENT_TASKS = [
     {
         "title": "Implement a 'read_webpage' skill for information gathering",
         "description": (
-            "Create a new skill `read_webpage` that takes a URL as input. "
+            "Create a new skill `read_webpage' that takes a URL as input. "
             "It should use `httpx` or a similar library to fetch the content of the URL, "
             "parse it (e.g., with BeautifulSoup if available in sandbox), "
             "and return a concise summary or key information. "
@@ -136,7 +136,6 @@ SELF_IMPROVEMENT_TASKS = [
     },
 ]
 
-
 class Heartbeat:
     """Heartbeat daemon — the continuous pulse of the Cradle agent."""
 
@@ -154,7 +153,8 @@ class Heartbeat:
         self.memory = memory
         self.telegram_bot = telegram_bot
         self._running = False
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self.beat_count = 0
+        self.start_time = time.time()
         self._evolution_interval = 3600 * 6  # Trigger evolution every 6 hours
         self._last_evolution_time = time.time()
         self._self_improvement_task_idx = 0
@@ -170,108 +170,24 @@ class Heartbeat:
                 )
 
     async def start(self):
-        """Start the heartbeat loop."""
+        """Start the heartbeat loop. Always BLOCKS."""
         if self._running:
             logger.warning("Heartbeat already running.")
             return
         self._running = True
-        self._heartbeat_task = asyncio.create_task(self._run_loop())
-        logger.info("Heartbeat started.")
+        logger.info(f"Heartbeat started (v{CRADLE_CURRENT_VERSION})")
+        
+        try:
+            await self.telegram_bot.send_message(f"🐣 Cradle Agent v{CRADLE_CURRENT_VERSION} online!")
+        except Exception:
+            pass
 
-<<<<<<< HEAD
+        await self._run_loop()
+
     async def stop(self):
         """Stop the heartbeat loop."""
-        if not self._running:
-            logger.warning("Heartbeat not running.")
-            return
         self._running = False
-        if self._heartbeat_task:
-            self._heartbeat_task.cancel()
-=======
-    async def _beat(self):
-        """One heartbeat cycle."""
-        self.beat_count += 1
-
-        # ── Process ALL pending tasks (up to 3 per beat) ──
-        tasks_processed = 0
-        while self.task_engine.pending_count > 0 and tasks_processed < 3:
-            task = await self.task_engine.process_next()
-            if not task:
-                break
-            tasks_processed += 1
-
-            # Notify via Telegram — full result, no truncation (long messages are chunked by send_message)
-            if task.status.value in ("completed", "failed"):
-                icon = "✅" if task.status.value == "completed" else "❌"
-                msg = f"{icon} [{task.id}] {task.title}\n"
-                if task.result:
-                    msg += f"\n{task.result[:3800]}"
-                if task.error:
-                    msg += f"\n⚠️ Error: {task.error[:1000]}"
-                try:
-                    await self.telegram.send_message(msg)
-                except Exception:
-                    pass
-
-            # ── Self-healing: auto-create fix task on failure ──
-            if task.status.value == "failed" and task.error:
-                fix_title = f"Fix failure: {task.title[:60]}"
-                fix_desc = (
-                    f"The task '{task.title}' failed with this error:\n"
-                    f"{task.error[:500]}\n\n"
-                    f"Analyze the error, fix the root cause, and retry the task. "
-                    f"If it's a code error, correct the code and re-run. "
-                    f"If it's a missing dependency, install it and retry. "
-                    f"Store the fix as a learning in AgentPlaybooks memory. "
-                    f"Original description: {task.description[:300]}"
-                )
-                self.task_engine.add_task(
-                    title=fix_title,
-                    description=fix_desc,
-                    parent_id=task.id,
-                    source="self-healing",
-                )
-                logger.info(f"🩹 Self-healing task created for [{task.id}]: {fix_title}")
-
-            # Store reflections in AgentPlaybooks
-            if task.reflection:
-                try:
-                    await self.memory.store_reflection(task.id, task.reflection, [])
-                except Exception:
-                    pass
-
-        if tasks_processed > 0:
-            logger.info(f"Processed {tasks_processed} tasks this beat")
-
-        # ── Auto-generate improvement tasks when idle ──
-        # Every 20 beats (~10 min) if no pending tasks, seed the next improvement
-        if (self.beat_count % 20 == 0 and
-            self.task_engine.pending_count == 0 and
-            self.beat_count > 5):
-
-            task_def = SELF_IMPROVEMENT_TASKS[
-                self._improvement_index % len(SELF_IMPROVEMENT_TASKS)
-            ]
-            self._improvement_index += 1
-
-            self.task_engine.add_task(
-                title=task_def["title"],
-                description=task_def["description"],
-                source="self-improvement",
-            )
-            logger.info(
-                f"🔄 Auto-generated improvement task: {task_def['title']}"
-            )
-
-        # ── Self-evolution: first at beat 20, then every 50 beats ──
-        if self.beat_count == 20 or (self.beat_count > 20 and self.beat_count % 50 == 0):
-            logger.info(f"🧬 Triggering self-evolution (beat #{self.beat_count})")
->>>>>>> ff53409 (fix(heartbeat): make start block to prevent premature exit)
-            try:
-                await self._heartbeat_task
-            except asyncio.CancelledError:
-                logger.info("Heartbeat stopped.")
-        self._heartbeat_task = None
+        logger.info("Heartbeat stopped.")
 
     async def _run_loop(self):
         """The main heartbeat loop."""
@@ -286,19 +202,21 @@ class Heartbeat:
 
     async def _pulse(self):
         """Execute one heartbeat pulse: process tasks, maybe evolve."""
-        logger.debug("Heartbeat pulse...")
+        self.beat_count += 1
+        logger.debug(f"Heartbeat pulse #{self.beat_count}...")
 
-        # Step 1: Process all pending tasks in the queue
+        # Step 1: Process all pending tasks
         await self.task_engine.process_all_pending_tasks()
 
-        # Step 2: Auto-generate improvement tasks if idle and not busy
-        if (
-            not self.task_engine.has_pending_tasks()
-            and not self.task_engine.is_busy()
-        ):
+        # Step 2: Periodic Health Check (every 50 beats)
+        if self.beat_count % 50 == 0:
+            await self._check_memory_health()
+
+        # Step 3: Auto-generate improvement tasks if idle and not busy
+        if not self.task_engine.has_pending_tasks() and not self.task_engine.is_busy():
             await self._propose_self_improvement_task()
 
-        # Step 3: Trigger periodic self-evolution
+        # Step 4: Trigger periodic self-evolution
         if time.time() - self._last_evolution_time > self._evolution_interval:
             logger.info("Periodic self-evolution triggered.")
             summary = await self.evolver.evolve()
@@ -306,20 +224,47 @@ class Heartbeat:
                 await self.telegram_bot.send_message(f"🧬 Evolution complete: {summary}")
             self._last_evolution_time = time.time()
 
-        # Step 4: Store system prompt & skills in AgentPlaybooks (handled by TaskEngine/SkillLoader now)
-        # Step 5: Persist state (handled by Memory/TaskEngine)
+    async def _check_memory_health(self):
+        """Prune old memories and deduplicate skills."""
+        logger.info("🩺 Running periodic memory health check...")
+        try:
+            # 1. Prune reflections
+            reflections = await self.memory.search_memory("reflection", limit=1000)
+            if len(reflections) > 50:
+                to_delete = sorted(reflections, key=lambda x: x.get('created_at', ''), reverse=True)[50:]
+                for m in to_delete:
+                    await self.memory.delete_memory(m['id'])
+                logger.info(f"🗑️ Pruned {len(to_delete)} old reflection memories")
+
+            # 2. Deduplicate skill tools
+            tools = await self.memory.list_tools()
+            skill_tools = [t for t in tools if t.get('name', '').startswith('skill_')]
+            
+            seen_names = set()
+            duplicates = []
+            for t in skill_tools:
+                name = t['name']
+                if name in seen_names:
+                    duplicates.append(t)
+                else:
+                    seen_names.add(name)
+            
+            if duplicates:
+                logger.info(f"🔍 Found {len(duplicates)} duplicate skill tools. Cleaning up...")
+                for d in duplicates:
+                    # delete_skill takes the base name (without skill_ prefix) or ID
+                    base_name = d['name'].replace('skill_', '')
+                    await self.memory.delete_skill(base_name)
+                logger.info(f"✨ Purged {len(duplicates)} duplicate skill tools")
+
+        except Exception as e:
+            logger.error(f"Failed memory health check: {e}")
 
     async def _propose_self_improvement_task(self):
         """Propose a new self-improvement task if none are pending."""
-        # This method is called when the agent is idle. We only want to add a *new* self-improvement
-        # task if there are currently no pending tasks *of any source*.
         if self.task_engine.has_pending_tasks():
-            return # Do not add new self-improvement tasks if other tasks are pending
-
-        if not SELF_IMPROVEMENT_TASKS:
-            logger.warning("No self-improvement tasks defined.")
             return
-
+        
         task_data = SELF_IMPROVEMENT_TASKS[self._self_improvement_task_idx]
         self.task_engine.add_task(
             title=task_data["title"],
@@ -328,14 +273,4 @@ class Heartbeat:
         )
         logger.info(f"Added self-improvement task: {task_data['title']}")
 
-        # Cycle to the next task for the next idle period
-        self._self_improvement_task_idx = (
-            self._self_improvement_task_idx + 1
-        ) % len(SELF_IMPROVEMENT_TASKS)
-
-    async def _update_agentplaybooks_system_prompt(self):
-        """Update the system prompt in AgentPlaybooks. (Deprecated, now done via TaskEngine/Memory)"""
-        pass # Not used anymore, task engine manages this. Use memory.store_system_prompt directly.
-
-
-
+        self._self_improvement_task_idx = (self._self_improvement_task_idx + 1) % len(SELF_IMPROVEMENT_TASKS)
