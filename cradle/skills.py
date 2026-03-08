@@ -4,9 +4,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-
-
-
 class SkillLoader:
     """Loads skills from AgentPlaybooks and provides them to the task engine."""
 
@@ -22,7 +19,6 @@ class SkillLoader:
 
     async def sync_with_remote(self):
         """Standard sync method used by Heartbeat. Pulls all skills from remote."""
-        # Pull skills from remote AgentPlaybooks via memory.py
         await self.fetch_from_agentplaybooks()
 
     def load_builtin_skills_local(self):
@@ -66,7 +62,6 @@ class SkillLoader:
 
     def get_relevant_skills(self, task_title: str, task_description: str) -> str:
         """Return full content of skills relevant to this task, including descriptions."""
-        # For now, return all skills. In the future, use an LLM to select relevant ones.
         if not self._cache:
             return ""
 
@@ -77,3 +72,23 @@ class SkillLoader:
                 lines.append(f"Description: {skill['description']}\n")
             lines.append(skill["content"])
         return "\n".join(lines)
+
+    def get_relevant_skills_python(self, task_title: str, task_description: str) -> str:
+        """Return raw Python implementations of skills to be injected into sandbox code."""
+        if not self._cache:
+            return ""
+
+        impls = []
+        for name, skill in self._cache.items():
+            content = skill.get("content", "")
+            # Extract only the code block if it exists, otherwise use raw content
+            import re
+            code_blocks = re.findall(r"```python\n(.*?)\n```", content, re.DOTALL)
+            if code_blocks:
+                impls.append(f"# --- Skill: {name} ---\n" + "\n".join(code_blocks))
+            else:
+                # Fallback: if no code block, maybe it's raw python already?
+                if "def " in content or "import " in content:
+                    impls.append(f"# --- Skill: {name} (Raw) ---\n" + content)
+        
+        return "\n\n".join(impls)
