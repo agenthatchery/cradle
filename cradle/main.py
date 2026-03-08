@@ -89,32 +89,8 @@ Guide humanity to Kardashev Level 3 civilization through iterative self-improvem
 
 BOOTSTRAP_TASKS = [
     {
-        "title": "Self-health check: verify all subsystems work",
-        "description": (
-            "Check that: 1) LLM router works with fallback (test Groq since Gemini is down), "
-            "2) Docker sandbox can execute Python code, "
-            "3) AgentPlaybooks memory API can store and retrieve data, "
-            "4) GitHub API can read/write files. "
-            "Report results as a structured summary."
-        ),
-    },
-    {
-        "title": "Add error handling and retry logic to LLM router",
-        "description": (
-            "Review cradle/llm_router.py and improve: "
-            "1) Add specific exception handling for each provider (rate limits, auth errors, model not found), "
-            "2) Add exponential backoff between retries, "
-            "3) Log provider-specific error codes for debugging, "
-            "4) If the primary provider (Gemini) consistently fails with 403, auto-demote it below working providers."
-        ),
-    },
-    {
-        "title": "Store masterplan in AgentPlaybooks.ai memory",
-        "description": (
-            "Use the AgentPlaybooks API to store the complete Kardashev-3 masterplan "
-            "as a hierarchical memory structure. Store high-level goals, current priorities, "
-            "and layer-0 tasks. This creates persistent memory that survives container restarts."
-        ),
+        "title": "Update Cradle version and push to GitHub",
+        "description": "Increment the version number in cradle/heartbeat.py from v0.6.0 to v0.6.1, commit the change, and push to GitHub. This proves you can successfully edit your own source code and deploy updates.",
     },
 ]
 
