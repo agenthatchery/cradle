@@ -1,15 +1,3 @@
-"""Skills — SKILL.md-compatible capabilities for the Cradle agent.
-
-Skills follow the Anthropic open standard (used by NanoClaw, Claude Code, Cursor):
-- YAML frontmatter with name, description
-- Markdown body with detailed instructions
-- Stored in AgentPlaybooks.ai for persistent, editable management
-- Loaded dynamically and injected into task context
-
-The agent loads skill name+description on every task, and loads full
-instructions only when the skill is relevant (progressive disclosure).
-"""
-
 import logging
 import os
 from typing import Optional
@@ -77,52 +65,15 @@ class SkillLoader:
         return skill["content"] if skill else None
 
     def get_relevant_skills(self, task_title: str, task_description: str) -> str:
-        """Return full content of skills relevant to this task."""
-        text = (task_title + " " + task_description).lower()
-        relevant = []
+        """Return full content of skills relevant to this task, including descriptions."""
+        # For now, return all skills. In the future, use an LLM to select relevant ones.
+        if not self._cache:
+            return ""
 
-        keywords = {
-            "web_search": ["search", "web", "internet", "research", "find", "look up", "browse", "google",
-                          "url", "http", "trending", "news", "investigate", "money", "revenue", "bounty",
-                          "discover", "explore", "scrape"],
-            "github_cli": ["github", "git", "repo", "clone", "commit", "push", "pull", "code", "file",
-                          "repository", "evolve", "self", "modify", "update", "branch", "merge", "source"],
-            "spawn_agent": ["spawn", "sub-agent", "subagent", "agent", "nanoclaw", "healing",
-                           "opencode", "openclaw", "container", "docker run"],
-        }
-
-        for name, kws in keywords.items():
-            if any(kw in text for kw in kws) and name in self._cache:
-                relevant.append(self._cache[name]["content"])
-
-        return "\n\n".join(relevant)
-        
-    def get_relevant_skills_python(self, task_title: str, task_description: str) -> str:
-        """Extract just the Python code blocks from relevant skills to auto-inject."""
-        text = (task_title + " " + task_description).lower()
-        python_code = []
-        import re
-
-        keywords = {
-            "web_search": ["search", "web", "internet", "research", "find", "look up", "browse", "google",
-                          "url", "http", "trending", "news", "investigate", "money", "revenue", "bounty",
-                          "discover", "explore", "scrape"],
-            "github_cli": ["github", "git", "repo", "clone", "commit", "push", "pull", "code", "file",
-                          "repository", "evolve", "self", "modify", "update", "branch", "merge", "source"],
-            "spawn_agent": ["spawn", "sub-agent", "subagent", "agent", "nanoclaw", "healing",
-                           "opencode", "openclaw", "container", "docker run"],
-        }
-
-        for name, kws in keywords.items():
-            if any(kw in text for kw in kws) and name in self._cache:
-                content = self._cache[name]["content"]
-                blocks = re.findall(r'```python\s*([\s\S]*?)```', content)
-                for block in blocks:
-                    clean_block = []
-                    for line in block.split('\n'):
-                        if '# Example usage:' in line or '## Example usage' in line:
-                            break
-                        clean_block.append(line)
-                    python_code.append("\n".join(clean_block))
-
-        return "\n\n".join(python_code)
+        lines = ["## Relevant Skills"]
+        for name, skill in self._cache.items():
+            lines.append(f"\n### Skill: {name}\n")
+            if skill.get("description"):
+                lines.append(f"Description: {skill['description']}\n")
+            lines.append(skill["content"])
+        return "\n".join(lines)
