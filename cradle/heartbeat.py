@@ -178,6 +178,7 @@ class Heartbeat:
         self._heartbeat_task = asyncio.create_task(self._run_loop())
         logger.info("Heartbeat started.")
 
+<<<<<<< HEAD
     async def stop(self):
         """Stop the heartbeat loop."""
         if not self._running:
@@ -186,6 +187,86 @@ class Heartbeat:
         self._running = False
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
+=======
+    async def _beat(self):
+        """One heartbeat cycle."""
+        self.beat_count += 1
+
+        # ── Process ALL pending tasks (up to 3 per beat) ──
+        tasks_processed = 0
+        while self.task_engine.pending_count > 0 and tasks_processed < 3:
+            task = await self.task_engine.process_next()
+            if not task:
+                break
+            tasks_processed += 1
+
+            # Notify via Telegram — full result, no truncation (long messages are chunked by send_message)
+            if task.status.value in ("completed", "failed"):
+                icon = "✅" if task.status.value == "completed" else "❌"
+                msg = f"{icon} [{task.id}] {task.title}\n"
+                if task.result:
+                    msg += f"\n{task.result[:3800]}"
+                if task.error:
+                    msg += f"\n⚠️ Error: {task.error[:1000]}"
+                try:
+                    await self.telegram.send_message(msg)
+                except Exception:
+                    pass
+
+            # ── Self-healing: auto-create fix task on failure ──
+            if task.status.value == "failed" and task.error:
+                fix_title = f"Fix failure: {task.title[:60]}"
+                fix_desc = (
+                    f"The task '{task.title}' failed with this error:\n"
+                    f"{task.error[:500]}\n\n"
+                    f"Analyze the error, fix the root cause, and retry the task. "
+                    f"If it's a code error, correct the code and re-run. "
+                    f"If it's a missing dependency, install it and retry. "
+                    f"Store the fix as a learning in AgentPlaybooks memory. "
+                    f"Original description: {task.description[:300]}"
+                )
+                self.task_engine.add_task(
+                    title=fix_title,
+                    description=fix_desc,
+                    parent_id=task.id,
+                    source="self-healing",
+                )
+                logger.info(f"🩹 Self-healing task created for [{task.id}]: {fix_title}")
+
+            # Store reflections in AgentPlaybooks
+            if task.reflection:
+                try:
+                    await self.memory.store_reflection(task.id, task.reflection, [])
+                except Exception:
+                    pass
+
+        if tasks_processed > 0:
+            logger.info(f"Processed {tasks_processed} tasks this beat")
+
+        # ── Auto-generate improvement tasks when idle ──
+        # Every 20 beats (~10 min) if no pending tasks, seed the next improvement
+        if (self.beat_count % 20 == 0 and
+            self.task_engine.pending_count == 0 and
+            self.beat_count > 5):
+
+            task_def = SELF_IMPROVEMENT_TASKS[
+                self._improvement_index % len(SELF_IMPROVEMENT_TASKS)
+            ]
+            self._improvement_index += 1
+
+            self.task_engine.add_task(
+                title=task_def["title"],
+                description=task_def["description"],
+                source="self-improvement",
+            )
+            logger.info(
+                f"🔄 Auto-generated improvement task: {task_def['title']}"
+            )
+
+        # ── Self-evolution: first at beat 20, then every 50 beats ──
+        if self.beat_count == 20 or (self.beat_count > 20 and self.beat_count % 50 == 0):
+            logger.info(f"🧬 Triggering self-evolution (beat #{self.beat_count})")
+>>>>>>> ff53409 (fix(heartbeat): make start block to prevent premature exit)
             try:
                 await self._heartbeat_task
             except asyncio.CancelledError:
