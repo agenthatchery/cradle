@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 SELF_IMPROVEMENT_TASKS = [
 
     {
+        "title": "Update Cradle version and push to GitHub",
+        "description": "Increment the version number in cradle/heartbeat.py from v0.6.0 to v0.6.1, commit the change, and push to GitHub. This proves you can successfully edit your own source code and deploy updates.",
+    },
+    {
         "title": "Perform a deep architecture review using Gemini 3.1 Pro",
         "description": (
             "Read all source files in the cradle/ directory. "
