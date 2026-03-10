@@ -14,7 +14,8 @@ class LLMAuditor:
     def analyze(self) -> dict:
         """Analyze the audit logs and return performance metrics."""
         if not os.path.exists(self.log_path):
-            return {"error": f"Log file not found: {self.log_path}"}
+            logger.warning(f"Audit log file not found: {self.log_path}")
+            return {}
 
         stats = defaultdict(lambda: {
             "total_calls": 0,
@@ -40,10 +41,15 @@ class LLMAuditor:
                         else:
                             error = entry.get("error", "unknown")
                             stats[p]["errors"][error] += 1
-                    except Exception:
+                    except json.JSONDecodeError:
+                        logger.debug(f"Skipping malformed log line in {self.log_path}: {line.strip()}")
+                        continue
+                    except Exception as e:
+                        logger.warning(f"Error processing log line in {self.log_path}: {e}, line: {line.strip()}")
                         continue
         except Exception as e:
-            return {"error": f"Failed to read logs: {e}"}
+            logger.error(f"Failed to read or parse logs from {self.log_path}: {e}")
+            return {}
 
         results = {}
         for provider, data in stats.items():
@@ -67,8 +73,9 @@ class LLMAuditor:
     def generate_report(self) -> str:
         """Generate a human-readable performance report."""
         results = self.analyze()
-        if "error" in results:
-            return f"❌ Audit Failed: {results['error']}"
+        # The previous 'if "error" in results:' check is no longer needed
+        # as analyze() now returns {} on failure or if no data is found.
+        # The existing 'if not results:' block correctly handles this.
 
         lines = [
             "📈 LLM Provider Performance Audit Report",
@@ -85,8 +92,7 @@ class LLMAuditor:
 
         for provider, data in sorted_providers:
             lines.append(f"\n[{provider.upper()}]")
-            lines.append(f"  - Success Rate: {data['success_rate']}%"
-            )
+            lines.append(f"  - Success Rate: {data['success_rate']}% ")
             lines.append(f"  - Avg Latency: {data['avg_latency_ms']}ms")
             lines.append(f"  - Total Calls: {data['total_calls']}")
             lines.append(f"  - Total Cost:  ${data['total_cost_usd']:.4f}")
@@ -95,19 +101,7 @@ class LLMAuditor:
 
         lines.append("\n💡 Optimization Advice:")
         if sorted_providers:
-            best_provider_name = sorted_providers[0][0]
-            lines.append(f"  - '{best_provider_name}' is performing best. Consider moving it to priority 1 or increasing its rate limits.")
-
-            underperforming_providers = []
-            for provider, data in sorted_providers:
-                # Only consider providers with sufficient calls to make a judgment
-                if data['total_calls'] >= 5 and data['success_rate'] < 50:
-                    underperforming_providers.append(provider)
-            
-            if underperforming_providers:
-                lines.append(f"  - The following providers are underperforming (success rate < 50%): {', '.join(underperforming_providers)}.")
-                lines.append("    Consider temporarily demoting them or investigating specific errors (e.g., API keys, rate limits).")
-            else:
-                lines.append("  - All active providers are performing adequately based on current logs.")
+            best = sorted_providers[0][0]
+            lines.append(f"  - '{best}' is performing best. Consider moving it to priority 1.")
             
         return "\n".join(lines)
