@@ -14,8 +14,7 @@ class LLMAuditor:
     def analyze(self) -> dict:
         """Analyze the audit logs and return performance metrics."""
         if not os.path.exists(self.log_path):
-            logger.warning(f"Audit log file not found: {self.log_path}")
-            return {}
+            return {"error": f"Log file not found: {self.log_path}"}
 
         stats = defaultdict(lambda: {
             "total_calls": 0,
@@ -32,7 +31,9 @@ class LLMAuditor:
                 for line in f:
                     try:
                         entry = json.loads(line)
+                        # Ensure 'provider' key exists, as it's critical for grouping stats
                         p = entry["provider"]
+                        
                         stats[p]["total_calls"] += 1
                         if entry.get("success"):
                             stats[p]["successes"] += 1
@@ -42,14 +43,16 @@ class LLMAuditor:
                             error = entry.get("error", "unknown")
                             stats[p]["errors"][error] += 1
                     except json.JSONDecodeError:
-                        logger.debug(f"Skipping malformed log line in {self.log_path}: {line.strip()}")
+                        logger.warning(f"Skipping malformed JSON log line: {line.strip()}")
+                        continue
+                    except KeyError as ke:
+                        logger.warning(f"Skipping log entry due to missing critical key '{ke}': {line.strip()}")
                         continue
                     except Exception as e:
-                        logger.warning(f"Error processing log line in {self.log_path}: {e}, line: {line.strip()}")
+                        logger.warning(f"Skipping log entry due to unexpected error '{e}' in line: {line.strip()}")
                         continue
         except Exception as e:
-            logger.error(f"Failed to read or parse logs from {self.log_path}: {e}")
-            return {}
+            return {"error": f"Failed to read logs: {e}"}
 
         results = {}
         for provider, data in stats.items():
@@ -73,9 +76,8 @@ class LLMAuditor:
     def generate_report(self) -> str:
         """Generate a human-readable performance report."""
         results = self.analyze()
-        # The previous 'if "error" in results:' check is no longer needed
-        # as analyze() now returns {} on failure or if no data is found.
-        # The existing 'if not results:' block correctly handles this.
+        if "error" in results:
+            return f"❌ Audit Failed: {results['error']}"
 
         lines = [
             "📈 LLM Provider Performance Audit Report",
@@ -92,12 +94,12 @@ class LLMAuditor:
 
         for provider, data in sorted_providers:
             lines.append(f"\n[{provider.upper()}]")
-            lines.append(f"  - Success Rate: {data['success_rate']}% ")
-            lines.append(f"  - Avg Latency: {data['avg_latency_ms']}ms")
-            lines.append(f"  - Total Calls: {data['total_calls']}")
-            lines.append(f"  - Total Cost:  ${data['total_cost_usd']:.4f}")
+            lines.append(f"  - Success Rate: {data['success_rate']}%\n")
+            lines.append(f"  - Avg Latency: {data['avg_latency_ms']}ms\n")
+            lines.append(f"  - Total Calls: {data['total_calls']}\n")
+            lines.append(f"  - Total Cost:  ${data['total_cost_usd']:.4f}\n")
             if data["most_common_errors"]:
-                lines.append(f"  - Top Errors:  {data['most_common_errors']}")
+                lines.append(f"  - Top Errors:  {data['most_common_errors']}\n")
 
         lines.append("\n💡 Optimization Advice:")
         if sorted_providers:
