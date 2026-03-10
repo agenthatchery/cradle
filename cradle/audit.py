@@ -85,7 +85,8 @@ class LLMAuditor:
 
         for provider, data in sorted_providers:
             lines.append(f"\n[{provider.upper()}]")
-            lines.append(f"  - Success Rate: {data['success_rate']}%")
+            lines.append(f"  - Success Rate: {data['success_rate']}%"
+            )
             lines.append(f"  - Avg Latency: {data['avg_latency_ms']}ms")
             lines.append(f"  - Total Calls: {data['total_calls']}")
             lines.append(f"  - Total Cost:  ${data['total_cost_usd']:.4f}")
@@ -94,14 +95,19 @@ class LLMAuditor:
 
         lines.append("\n💡 Optimization Advice:")
         if sorted_providers:
-            best = sorted_providers[0][0]
-            lines.append(f"  - '{best}' is performing best. Consider moving it to priority 1.")
+            best_provider_name = sorted_providers[0][0]
+            lines.append(f"  - '{best_provider_name}' is performing best. Consider moving it to priority 1 or increasing its rate limits.")
+
+            underperforming_providers = []
+            for provider, data in sorted_providers:
+                # Only consider providers with sufficient calls to make a judgment
+                if data['total_calls'] >= 5 and data['success_rate'] < 50:
+                    underperforming_providers.append(provider)
+            
+            if underperforming_providers:
+                lines.append(f"  - The following providers are underperforming (success rate < 50%): {', '.join(underperforming_providers)}.")
+                lines.append("    Consider temporarily demoting them or investigating specific errors (e.g., API keys, rate limits).")
+            else:
+                lines.append("  - All active providers are performing adequately based on current logs.")
             
         return "\n".join(lines)
-
-if __name__ == "__main__":
-    # Test run
-    import sys
-    log_file = sys.argv[1] if len(sys.argv) > 1 else "/app/data/llm_audit.jsonl"
-    auditor = LLMAuditor(log_file)
-    print(auditor.generate_report())
