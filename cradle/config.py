@@ -109,4 +109,7 @@ SANDBOX_MEMORY_LIMIT = None # e.g., '512m' for 512MB, '1g' for 1GB. Set to None 
 
         minimax_key = os.getenv("MINIMAX_API_KEY", "")
 DOCKER_CPU_LIMIT = '1.0' # 1 CPU core
+    SANDBOX_CPU_LIMIT: float = 0.5  # Docker --cpus limit (e.g., 0.5 for 50% of one CPU)
+    SANDBOX_MEMORY_LIMIT: str = '256m' # Docker --memory limit (e.g., '256m', '1g')
+
 DOCKER_MEMORY_LIMIT = '2g' # 2 GB memory

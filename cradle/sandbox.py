@@ -17,6 +17,7 @@ Fallback: subprocess when Docker unavailable.
 import asyncio
 import logging
 import os
+from .config import Config
 import shutil
 import tempfile
 import time
