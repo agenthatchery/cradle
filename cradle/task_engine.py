@@ -53,6 +53,22 @@ class Task:
 
 
 class TaskEngine:
+    def get_task_tree_string(self, task=None, indent=0):
+        if task is None:
+            if self.current_task:
+                return self.get_task_tree_string(self.current_task, indent=0)
+            else:
+                return "No active task."
+        prefix = "  " * indent
+        tree_str = f"{prefix}- {task.title} [{task.status.name if hasattr(task.status, 'name') else task.status}]
+"
+        if task.subtasks:
+            for subtask_id in task.subtasks:
+                subtask = self.tasks.get(subtask_id)
+                if subtask:
+                    tree_str += self.get_task_tree_string(subtask, indent + 1)
+        return tree_str
+
     """Manages the hierarchical task tree and executes tasks via ReAct loop."""
 
     def __init__(self, llm: LLMRouter, sandbox: Sandbox, skills=None):
