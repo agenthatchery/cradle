@@ -14,7 +14,49 @@ class LLMRouter:
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key)
 
-    async def complete(self, messages: list[dict], model: str, stream: bool = False, **kwargs):
+        # START_STREAMING_REFACTOR
+    async def complete(
+        self,
+        model_name: str,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+        stream: bool = False, # Added stream parameter
+        **kwargs,
+    ) -> typing.Union[str, typing.AsyncGenerator[str, None]]:
+        # Placeholder for actual streaming logic. 
+        # This would involve using model_name to select the client (OpenAI, Gemini, etc.)
+        # and then calling the appropriate streaming API if `stream` is True.
+        # If `stream` is False, it would call the non-streaming API and return the full response.
+        # Example for OpenAI streaming:
+        # if stream and 'openai' in model_name:
+        #     async for chunk in await self.openai_client.chat.completions.create(
+        #         model=model_name,
+        #         messages=messages,
+        #         temperature=temperature,
+        #         max_tokens=max_tokens,
+        #         stream=True,
+        #         **kwargs
+        #     ):
+        #         if chunk.choices[0].delta.content:
+        #             yield chunk.choices[0].delta.content
+        # elif stream and 'gemini' in model_name:
+        #     # Similar logic for Gemini streaming
+        #     pass
+        # else:
+        #     # Existing non-streaming logic
+        #     response = await self.openai_client.chat.completions.create(
+        #         model=model_name,
+        #         messages=messages,
+        #         temperature=temperature,
+        #         max_tokens=max_tokens,
+        #         stream=False,
+        #         **kwargs
+        #     )
+        #     return response.choices[0].message.content
+        # END_STREAMING_REFACTOR
+        raise NotImplementedError("Streaming implementation is pending.") # Placeholder
+    self, messages: list[dict], model: str, stream: bool = False, **kwargs):
         if stream:
             # Placeholder for actual streaming logic
             yield 'Streaming chunk example.'
