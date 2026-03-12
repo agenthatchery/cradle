@@ -108,3 +108,5 @@ SANDBOX_CPU_LIMIT = None  # e.g., '1.0' for 1 CPU, '0.5' for 0.5 CPU. Set to Non
 SANDBOX_MEMORY_LIMIT = None # e.g., '512m' for 512MB, '1g' for 1GB. Set to None for no limit.
 
         minimax_key = os.getenv("MINIMAX_API_KEY", "")
+DOCKER_CPU_LIMIT = '1.0' # 1 CPU core
+DOCKER_MEMORY_LIMIT = '2g' # 2 GB memory

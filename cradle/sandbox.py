@@ -1,3 +1,4 @@
+from cradle import config
 from . import config
 """Sandbox — executes agent-generated code safely using DinD (Docker-in-Docker).
 
@@ -148,7 +149,7 @@ class Sandbox:
             payload = code
 
         docker_cmd = [
-            "docker", "run", "--rm", "-i",  # -i = keep stdin open
+            "docker", "run", "--cpus", config.DOCKER_CPU_LIMIT, "--memory", config.DOCKER_MEMORY_LIMIT, "--rm", "-i",  # -i = keep stdin open
             "--cap-drop=ALL",
             "--memory=512m", "--cpus=1",
             "--pids-limit=100",
@@ -188,7 +189,7 @@ class Sandbox:
         t0 = time.monotonic()
 
         docker_cmd = [
-            "docker", "run", "--rm", "-i",
+            "docker", "run", "--cpus", config.DOCKER_CPU_LIMIT, "--memory", config.DOCKER_MEMORY_LIMIT, "--rm", "-i",
             "--cap-drop=ALL",
             "--memory=256m", "--cpus=1",
         ]
