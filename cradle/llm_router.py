@@ -6,7 +6,8 @@ import asyncio
 class LLMRouter:
 
 
-    async def complete(self, prompt: str, provider: str = "openai", **kwargs):
+    # TODO: Refactor 'complete' for streaming responses
+async def complete(self, prompt: str, provider: str = "openai", **kwargs):
         if provider == "openai":
             # Assuming self.openai_client is an async OpenAI client
             # and supports .stream attribute for chat completions
