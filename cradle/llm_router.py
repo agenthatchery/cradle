@@ -15,6 +15,10 @@ class LLMRouter:
             genai.configure(api_key=self.gemini_api_key)
 
     async def complete(self, messages: list[dict], model: str, stream: bool = False, **kwargs):
+        if stream:
+            # Placeholder for actual streaming logic
+            yield 'Streaming chunk example.'
+            return
             provider = self._get_provider(model)
             if stream and provider.supports_streaming:
                 async for chunk in provider.stream_complete(messages, model, **kwargs):
