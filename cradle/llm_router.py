@@ -7,7 +7,12 @@ class LLMRouter:
 
 
     # TODO: Refactor 'complete' for streaming responses
-async def complete(self, prompt: str, provider: str = "openai", **kwargs):
+async async def complete(self, prompt: str, provider: str = "openai", **kwargs):
+    # TODO: Implement streaming logic here using async yield for LLM responses
+    # Example for OpenAI:
+    #   async for chunk in client.chat.completions.create(..., stream=True):
+    #       if chunk.choices[0].delta.content:
+    #           yield chunk.choices[0].delta.content
         if provider == "openai":
             # Assuming self.openai_client is an async OpenAI client
             # and supports .stream attribute for chat completions
