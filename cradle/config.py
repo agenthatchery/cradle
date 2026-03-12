@@ -15,3 +15,4 @@ DOCKER_MEMORY_LIMIT = os.getenv('CRADLE_DOCKER_MEMORY_LIMIT', '512m') # e.g., '5
 # Docker resource limits for sandbox containers
 SANDBOX_CPU_LIMIT = os.environ.get('CRADLE_SANDBOX_CPU_LIMIT', '1.0')  # e.g., '0.5' for 50% of one CPU, '2.0' for two CPUs
 SANDBOX_MEMORY_LIMIT = os.environ.get('CRADLE_SANDBOX_MEMORY_LIMIT', '512m') # e.g., '256m', '1g'
+LLM_PROVIDER_PRIORITY = ['Groq', 'OpenAI', 'Gemini 2.5 Flash']
