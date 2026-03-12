@@ -100,6 +100,7 @@ self, messages: list, model: str, stream: bool = False, **kwargs):
                 yield response.choices[0].message.content
         elif provider == "gemini":
             import google.generativeai as genai # Assume genai is imported at the top
+from typing import Union, AsyncIterator
             # Configure genai if not already done, e.g., genai.configure(api_key=os.environ["GEMINI_API_KEY"])
             model_instance = genai.GenerativeModel(model)
             if stream:
