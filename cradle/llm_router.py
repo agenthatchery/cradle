@@ -9,7 +9,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Optional
+from typing import AsyncGenerator, AsyncIterator, Optional
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -64,7 +64,17 @@ class LLMRouter:
         await self._client.aclose()
 
 
-    async def complete(self, messages: list, model: str, stream: bool = False, **kwargs):
+    async def complete(
+        self,
+        messages: list[dict],
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        tools: Optional[list[dict]] = None,
+        tool_choice: Union[str, dict] = "auto",
+        stream: bool = False, # Added for streaming support
+    ) -> Union[str, AsyncGenerator[str, None]]: # Updated return type
+self, messages: list, model: str, stream: bool = False, **kwargs):
         # Determine provider based on model name or configuration
         provider = self._get_provider_for_model(model) # Assume _get_provider_for_model exists
 
@@ -254,3 +264,6 @@ class LLMRouter:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             logger.error(f"Failed to write to audit log: {e}")
+
+# TODO: Implement full streaming logic within the `complete` method.
+# Branch based on `stream` parameter. If `stream=True`, use async generators for supported providers (OpenAI, Gemini).
