@@ -4,6 +4,49 @@ import google.generativeai as genai
 import asyncio
 
 class LLMRouter:
+
+    async def complete(self, messages, model_name, stream: bool = False, **kwargs):
+        if model_name.startswith("gpt"):
+            if not self.openai_client:
+                raise ValueError("OpenAI client not initialized.")
+            if stream:
+                async for chunk in await self.openai_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    stream=True,
+                    **kwargs
+                ):
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+            else:
+                response = await self.openai_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    stream=False,
+                    **kwargs
+                )
+                yield response.choices[0].message.content
+        elif model_name.startswith("gemini"):
+            if not self.gemini_client:
+                raise ValueError("Gemini client not initialized.")
+            if stream:
+                response = await self.gemini_client.generate_content(
+                    contents=messages,
+                    stream=True,
+                    **kwargs
+                )
+                async for chunk in response:
+                    if chunk.text:
+                        yield chunk.text
+            else:
+                response = await self.gemini_client.generate_content(
+                    contents=messages,
+                    stream=False,
+                    **kwargs
+                )
+                yield response.text
+        else:
+            raise ValueError(f"Unsupported model provider: {model_name}")
     def __init__(self, openai_api_key=None, gemini_api_key=None):
         if openai_api_key:
             openai.api_key = openai_api_key
