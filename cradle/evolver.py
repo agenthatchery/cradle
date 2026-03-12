@@ -391,3 +391,9 @@ Please FIX the error and provide a corrected proposal. output ONLY a JSON object
             return False, error_msg
 
 # Added a comment to test git config fix
+
+# TODO: Implement automated unit test generation and execution before applying changes.
+# This will involve:
+# 1. Generating a test file based on the proposed code changes.
+# 2. Running the test file in the sandbox.
+# 3. Only proceeding if both the code and the new tests pass.
