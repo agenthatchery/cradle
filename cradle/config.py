@@ -103,4 +103,8 @@ class Config:
                 cost_per_1k_tokens=0.005,
             ))
 
+# Docker Sandbox Resource Limits
+SANDBOX_CPU_LIMIT = None  # e.g., '1.0' for 1 CPU, '0.5' for 0.5 CPU. Set to None for no limit.
+SANDBOX_MEMORY_LIMIT = None # e.g., '512m' for 512MB, '1g' for 1GB. Set to None for no limit.
+
         minimax_key = os.getenv("MINIMAX_API_KEY", "")

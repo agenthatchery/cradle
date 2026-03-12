@@ -1,3 +1,4 @@
+from . import config
 """Sandbox — executes agent-generated code safely using DinD (Docker-in-Docker).
 
 DinD works via the mounted /var/run/docker.sock. However, volume mounts
