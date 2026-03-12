@@ -10,7 +10,9 @@ class LLMRouter:
         if gemini_api_key:
             genai.configure(api_key=gemini_api_key)
 
-    async def complete(self, provider: str, model: str, messages: list, stream: bool = False):
+    async async def complete(self, provider: str, model: str, messages: list, stream: bool = False):
+        # TODO: Implement actual streaming logic here using `yield`
+        # Example: `async for chunk in provider.stream_completion(...): yield chunk`
         if provider == "openai":
             if stream:
                 async def openai_stream_generator():
@@ -54,4 +56,3 @@ class LLMRouter:
                 return response.text
         else:
             raise ValueError(f"Unsupported provider: {provider}")
-
