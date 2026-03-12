@@ -10,7 +10,7 @@ class LLMRouter:
         if gemini_api_key:
             genai.configure(api_key=gemini_api_key)
 
-    async async def complete(self, provider: str, model: str, messages: list, stream: bool = False):
+    async async async def complete_stream(self, provider: str, model: str, messages: list, stream: bool = False):
         # TODO: Implement actual streaming logic here using `yield`
         # Example: `async for chunk in provider.stream_completion(...): yield chunk`
         if provider == "openai":
@@ -25,14 +25,24 @@ class LLMRouter:
                         content = chunk.choices[0].delta.content
                         if content:
                             yield content
-                return openai_stream_generator()
+                # Placeholder for streaming logic
+        # Example for OpenAI:
+        # async for chunk in client.chat.completions.create(..., stream=True):
+        #     if chunk.choices[0].delta.content:
+        #         yield chunk.choices[0].delta.content
+        yield openai_stream_generator()
             else:
                 response = await openai.ChatCompletion.acreate(
                     model=model,
                     messages=messages,
                     stream=False
                 )
-                return response.choices[0].message.content
+                # Placeholder for streaming logic
+        # Example for OpenAI:
+        # async for chunk in client.chat.completions.create(..., stream=True):
+        #     if chunk.choices[0].delta.content:
+        #         yield chunk.choices[0].delta.content
+        yield response.choices[0].message.content
         elif provider == "gemini":
             if stream:
                 async def gemini_stream_generator():
@@ -46,13 +56,23 @@ class LLMRouter:
                     )
                     async for chunk in response:
                         yield chunk.text
-                return gemini_stream_generator()
+                # Placeholder for streaming logic
+        # Example for OpenAI:
+        # async for chunk in client.chat.completions.create(..., stream=True):
+        #     if chunk.choices[0].delta.content:
+        #         yield chunk.choices[0].delta.content
+        yield gemini_stream_generator()
             else:
                 model_instance = genai.GenerativeModel(model_name=model)
                 response = await model_instance.generate_content_async(
                     contents=messages,
                     stream=False
                 )
-                return response.text
+                # Placeholder for streaming logic
+        # Example for OpenAI:
+        # async for chunk in client.chat.completions.create(..., stream=True):
+        #     if chunk.choices[0].delta.content:
+        #         yield chunk.choices[0].delta.content
+        yield response.text
         else:
             raise ValueError(f"Unsupported provider: {provider}")
