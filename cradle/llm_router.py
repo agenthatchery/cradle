@@ -5,60 +5,48 @@ import asyncio
 
 class LLMRouter:
 
-    async def complete(self, messages, model_name, stream: bool = False, **kwargs):
-        if model_name.startswith("gpt"):
-            if not self.openai_client:
-                raise ValueError("OpenAI client not initialized.")
-            if stream:
-                async for chunk in await self.openai_client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    stream=True,
-                    **kwargs
-                ):
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
-            else:
-                response = await self.openai_client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    stream=False,
-                    **kwargs
-                )
-                yield response.choices[0].message.content
-        elif model_name.startswith("gemini"):
-            if not self.gemini_client:
-                raise ValueError("Gemini client not initialized.")
-            if stream:
-                response = await self.gemini_client.generate_content(
-                    contents=messages,
-                    stream=True,
-                    **kwargs
-                )
-                async for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
-            else:
-                response = await self.gemini_client.generate_content(
-                    contents=messages,
-                    stream=False,
-                    **kwargs
-                )
-                yield response.text
-        else:
-            raise ValueError(f"Unsupported model provider: {model_name}")
-    def __init__(self, openai_api_key=None, gemini_api_key=None):
-        if openai_api_key:
-            openai.api_key = openai_api_key
-        if gemini_api_key:
-            genai.configure(api_key=gemini_api_key)
 
-    async async async def complete_stream(self, provider: str, model: str, messages: list, stream: bool = False):
-        # TODO: Implement actual streaming logic here using `yield`
-        # Example: `async for chunk in provider.stream_completion(...): yield chunk`
+    async def complete(self, prompt: str, provider: str = "openai", **kwargs):
         if provider == "openai":
-            if stream:
-                async def openai_stream_generator():
+            # Assuming self.openai_client is an async OpenAI client
+            # and supports .stream attribute for chat completions
+            stream = await self.openai_client.chat.completions.create(
+                model=kwargs.get("model", "gpt-4"),
+                messages=[{"role": "user", "content": prompt}],
+                stream=True, # Enable streaming
+                **kwargs
+            )
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        elif provider == "gemini":
+            # Assuming self.gemini_client is an async Gemini client
+            # and supports .generate_content with stream=True
+            model = self.gemini_client.GenerativeModel(kwargs.get("model", "gemini-pro"))
+            response_stream = model.generate_content(
+                prompt,
+                stream=True,
+                **kwargs
+            )
+            async for chunk in response_stream:
+                if chunk.text:
+                    yield chunk.text
+        elif provider == "mock": # A simple mock provider for testing or local development
+            for char in f"Mock streaming response for: {prompt}":
+                yield char
+                await asyncio.sleep(0.01) # Simulate delay
+        else:
+            # Fallback for non-streaming providers or if streaming is not implemented
+            # This part would typically call a non-streaming version or raise an error.
+            # For now, we'll just yield a single non-streaming response.
+            # In a real scenario, you'd likely have a separate non-streaming path
+            # or ensure all paths return an async generator.
+            print(f"Warning: Provider {provider} does not support streaming or is not implemented. Returning full response.")
+            # This part needs actual implementation based on other providers.
+            # For now, we'll just return a placeholder string if no streaming path is found.
+            yield f"[NON-STREAMING] Full response for {provider}: {prompt}"
+
+    async def openai_stream_generator():
                     response = await openai.ChatCompletion.acreate(
                         model=model,
                         messages=messages,
