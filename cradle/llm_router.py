@@ -14,8 +14,14 @@ class LLMRouter:
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key)
 
-    async def complete(self, model: str, messages: list[Dict[str, str]], **kwargs) -> AsyncIterator[str]:
-        """Asynchronously generates a streaming completion from the specified LLM.
+    async def complete(self, messages: list[dict], model: str, stream: bool = False, **kwargs):
+            provider = self._get_provider(model)
+            if stream and provider.supports_streaming:
+                async for chunk in provider.stream_complete(messages, model, **kwargs):
+                    yield chunk
+            else:
+                response = await provider.complete(messages, model, **kwargs)
+                yield response
 
         Args:
             model: The name of the LLM model to use (e.g., 'gpt-4o', 'gemini-pro').
@@ -71,4 +77,3 @@ class LLMRouter:
         async for chunk in response_stream:
             if chunk.text:
                 yield chunk.text
-
