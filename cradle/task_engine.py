@@ -53,6 +53,17 @@ class Task:
 
 
 class TaskEngine:
+    _current_task_root = None # Placeholder for the root of the task tree
+
+    @classmethod
+    def set_current_task_tree(cls, task_node):
+        cls._current_task_root = task_node
+
+    @classmethod
+    def get_current_task_tree(cls):
+        """Returns the current hierarchical task tree."""
+        return cls._current_task_root
+
     def get_task_tree_string(self, task=None, indent=0):
         if task is None:
             if self.current_task:

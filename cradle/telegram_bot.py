@@ -1,5 +1,6 @@
 
 import asyncio
+import task_engine
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import os
@@ -41,6 +42,32 @@ class TaskEngine:
         }
 
 task_engine = TaskEngine() # Instantiate a placeholder TaskEngine
+
+
+async def plan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Sends a formatted task tree as a response to the /plan command."""
+    task_tree = task_engine.get_current_task_tree() # Assuming this function exists in task_engine
+    if task_tree:
+        formatted_tree = format_task_tree(task_tree)
+        await update.message.reply_text(f"Current Task Plan:
+```
+{formatted_tree}
+```", parse_mode='MarkdownV2')
+    else:
+        await update.message.reply_text("No active task plan found.")
+
+def format_task_tree(task_node, indent=0):
+    """Recursively formats the task tree into a human-readable string."""
+    prefix = '  ' * indent
+    status = task_node.get('status', 'UNKNOWN')
+    description = task_node.get('description', 'No Description')
+    output = f"{prefix}- [{status}] {description}
+"
+
+    subtasks = task_node.get('subtasks', [])
+    for subtask in subtasks:
+        output += format_task_tree(subtask, indent + 1)
+    return output
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a message on /start"""
@@ -90,7 +117,8 @@ def main() -> None:
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("plan", plan_command)) # Add the new /plan command handler
+    application.add_handler(CommandHandler("plan", plan_command)
+    application.add_handler(CommandHandler("plan", plan_command))) # Add the new /plan command handler
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
