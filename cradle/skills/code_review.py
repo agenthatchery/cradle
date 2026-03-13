@@ -1,113 +1,89 @@
 
-import httpx
-import json
 import os
+import json
+from typing import Optional
 
-def code_review(file_path: str, file_content: str, diff: str = None) -> dict:
+# Placeholder for Gemini client import. Replace with actual client when available.
+# For now, we'll simulate it or use a direct HTTP call if necessary.
+
+# Assuming GEMINI_API_KEY is available in the environment
+def _call_gemini_api(prompt: str) -> str:
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+        model = genai.GenerativeModel('gemini-1.5-pro') # Using 1.5 Pro as 3.1 Pro might not be generally available or stable.
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error calling Gemini API: {e}"
+
+def code_review(file_path: str, diff: Optional[str] = None) -> dict:
     """
-    Performs an LLM-powered code review on the given file content or diff.
+    Performs an LLM-powered code review on a given file or diff.
 
     Args:
-        file_path (str): The path to the file being reviewed.
-        file_content (str): The full content of the file.
-        diff (str, optional): A diff string representing changes. If provided,
-                              the review focuses on the diff. Defaults to None.
+        file_path (str): The path to the file to be reviewed.
+        diff (Optional[str]): An optional diff string to review specific changes.
 
     Returns:
         dict: A JSON object with actionable recommendations.
     """
-    gemini_api_key = os.environ.get("GEMINI_API_KEY")
-    if not gemini_api_key:
-        raise ValueError("GEMINI_API_KEY environment variable not set.")
-
-    headers = {"Content-Type": "application/json"}
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={gemini_api_key}"
-
-    prompt = f"""
-You are an expert code reviewer. Perform a thorough code review for the following {file_path}. Identify potential bugs, security vulnerabilities, performance issues, and style guide violations. Provide actionable recommendations in a JSON array format. Each item in the array should be an object with 'line_number' (if applicable, otherwise null), 'type' (e.g., 'bug', 'security', 'performance', 'style', 'suggestion'), 'description', and 'recommendation'.
-
-File: {file_path}
-"""
-
+    content_to_review = ""
     if diff:
-        prompt += f"""
-Review the following diff:
-```diff
-{diff}
-```
-
-And the current file content:
-```
-{file_content}
-```
-"""
+        review_type = "diff"
+        content_to_review = diff
+    elif os.path.exists(file_path):
+        review_type = "file"
+        with open(file_path, 'r') as f:
+            content_to_review = f.read()
     else:
-        prompt += f"""
-Review the following file content:
+        return {"error": f"File not found: {file_path} and no diff provided."}
+
+    if not content_to_review:
+        return {"error": "No content to review.", "file_path": file_path, "diff_provided": bool(diff)}
+
+    prompt = f"""You are an expert code reviewer. Your task is to perform a thorough code review.
+Focus on identifying potential bugs, security vulnerabilities, performance issues, and style guide violations.
+Provide actionable recommendations in a JSON format.
+
+Review the following {review_type} for '{file_path}':
+
 ```
-{file_content}
+{content_to_review}
 ```
+
+Your output MUST be a JSON object with the following structure:
+{{
+    "summary": "Overall summary of the review.",
+    "recommendations": [
+        {{
+            "type": "bug" | "security" | "performance" | "style" | "other",
+            "description": "Detailed description of the issue.",
+            "severity": "low" | "medium" | "high",
+            "line_numbers": [int], // Optional, relevant line numbers if applicable
+            "suggested_fix": "Code snippet or detailed instruction for fixing the issue."
+        }}
+    ]
+}}
+
+Ensure the JSON is well-formed and directly parsable.
 """
 
-    prompt += """
-Your response MUST be a JSON array. Example:
-[
-  {
-    "line_number": 15,
-    "type": "bug",
-    "description": "Possible off-by-one error in loop condition.",
-    "recommendation": "Change `range(len(list))` to `range(len(list) - 1)` if last element is not to be included."
-  },
-  {
-    "line_number": null,
-    "type": "security",
-    "description": "Hardcoded credentials found.",
-    "recommendation": "Move sensitive information to environment variables or a secure configuration system."
-  }
-]
-"""
-
-    payload = {
-        "contents": [{
-            "parts": [{
-                "text": prompt
-            }]
-        }]
-    }
-
+    print(f"[*] Sending {review_type} for '{file_path}' to Gemini for review...")
     try:
-        response = httpx.post(url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        response_data = response.json()
-        
-        # Extract the text content from the response
-        # Gemini's response structure can be nested
-        text_content = ""
-        if 'candidates' in response_data and response_data['candidates']:
-            for candidate in response_data['candidates']:
-                if 'content' in candidate and 'parts' in candidate['content']:
-                    for part in candidate['content']['parts']:
-                        if 'text' in part:
-                            text_content += part['text']
-        
-        # Attempt to parse the JSON output
-        # Sometimes the LLM might include markdown fences or extra text
-        json_start = text_content.find('[')
-        json_end = text_content.rfind(']')
-        
-        if json_start != -1 and json_end != -1 and json_end > json_start:
-            json_string = text_content[json_start : json_end + 1]
-            return json.loads(json_string)
-        else:
-            # If direct JSON parsing fails, return a generic error or the raw text
-            return {"error": "Failed to parse LLM response as JSON", "raw_response": text_content}
+        llm_response_text = _call_gemini_api(prompt)
+        # Attempt to parse the JSON response
+        if llm_response_text.startswith('```json') and llm_response_text.endswith('```'):
+            llm_response_text = llm_response_text[7:-3].strip()
+        elif llm_response_text.startswith('```') and llm_response_text.endswith('```'): # Handle cases where it might just be ```
+            llm_response_text = llm_response_text[3:-3].strip()
 
-    except httpx.HTTPStatusError as e:
-        return {"error": f"HTTP error occurred: {e.response.status_code} - {e.response.text}"}
-    except httpx.RequestError as e:
-        return {"error": f"Request error occurred: {e}"}
+        review_result = json.loads(llm_response_text)
+        return review_result
     except json.JSONDecodeError as e:
-        return {"error": f"JSON decode error: {e}", "raw_response": text_content}
+        print(f"Error decoding JSON from LLM response: {e}")
+        print(f"LLM Raw Response: {llm_response_text}")
+        return {"error": "Failed to parse LLM response as JSON", "raw_response": llm_response_text, "exception": str(e)}
     except Exception as e:
-        return {"error": f"An unexpected error occurred: {e}"}
+        return {"error": f"An unexpected error occurred during LLM call or processing: {e}", "details": str(e)}
 
