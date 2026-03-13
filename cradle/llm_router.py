@@ -32,7 +32,7 @@ class LLMRouter:
             logger.warning("GEMINI_API_KEY not found. Gemini client not initialized.")
 
     # Streaming support placeholder
-async def complete(self, prompt: str, model: str = "gpt-4o", max_tokens: int = 1000, temperature: float = 0.7, stream: bool = False):
+async def complete_streaming(self, prompt: str, model: str = "gpt-4o", max_tokens: int = 1000, temperature: float = 0.7, stream: bool = False):
         """
         Generates a completion from an LLM. Supports streaming responses.
         """
@@ -102,4 +102,21 @@ async def complete(self, prompt: str, model: str = "gpt-4o", max_tokens: int = 1
         except Exception as e:
             logger.error(f"Gemini API error: {e}")
             raise
+
+
+
+# Placeholder for streaming complete method
+async def complete(self, messages, functions=None, function_call=None, stream=False, **kwargs):
+    if stream:
+        # Implement streaming logic here, yielding chunks
+        # Example for OpenAI (will need actual client integration)
+        # client = self._get_client(provider)
+        # response = await client.chat.completions.create(..., stream=True)
+        # async for chunk in response:
+        #    yield chunk.choices[0].delta.content
+        yield "STREAMING_PLACEHOLDER_CHUNK"
+    else:
+        # Call the original complete method
+        async for result in self.complete_streaming(messages, functions, function_call, **kwargs):
+            yield result # This will be a single item yield for non-streaming
 
