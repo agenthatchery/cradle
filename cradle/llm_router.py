@@ -1,5 +1,6 @@
 
 import openai
+import asyncio # Added for async operations
 import google.generativeai as genai
 import asyncio
 
@@ -7,7 +8,8 @@ class LLMRouter:
 
 
     # TODO: Refactor 'complete' for streaming responses
-async async def complete(self, prompt: str, provider: str = "openai", **kwargs):
+async async async def complete(self, # Modified for streaming support
+        # Expected to return an async generator for streaming responses. prompt: str, provider: str = "openai", **kwargs):
     # TODO: Implement streaming logic here using async yield for LLM responses
     # Example for OpenAI:
     #   async for chunk in client.chat.completions.create(..., stream=True):
