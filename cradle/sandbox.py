@@ -1,3 +1,4 @@
+from cradle import config
 import config
 
 import docker
