@@ -5,6 +5,9 @@ from . import config
 
 
 class Sandbox:
+    def __init__(self):
+        self.config = config.Config()
+
     def __init__(self, cpus=None, memory=None):
         self.client = docker.from_env()
         self.cpus = cpus
