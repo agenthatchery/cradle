@@ -27,3 +27,7 @@ class Config:
     SANDBOX_CPU_LIMIT: float = 0.5 # CPU limit for sandbox containers (e.g., 0.5 for 50% of one CPU)
     LLM_PROVIDER_PRIORITIES = ['groq', 'gemini-flash', 'openai']
     'groq',    'gemini-2.5-flash',    'openai',PROVIDERS = ['groq', 'gemini-flash', 'openai']
+
+# Sandbox Resource Limits
+SANDBOX_DEFAULT_CPU_LIMIT = "1.0"  # Docker --cpus value (e.g., "0.5" or "1.0")
+SANDBOX_DEFAULT_MEMORY_LIMIT = "512m" # Docker --memory value (e.g., "256m" or "1g")
