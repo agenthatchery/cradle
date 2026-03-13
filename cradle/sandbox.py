@@ -1,6 +1,8 @@
 import config
 
 import docker
+from . import config
+
 
 class Sandbox:
     def __init__(self, cpus=None, memory=None):
