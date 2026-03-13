@@ -74,41 +74,67 @@ class LLMRouter:
                     # Handle cases where chunk is not fully decodable as UTF-8
                     pass
 
-    async def complete(self, provider: str, model: str, messages: list, stream: bool = False, **kwargs) -> AsyncGenerator[str, None] | Dict[str, Any]:
-        if provider == "openai":
-            if not self.openai_api_key:
-                raise ValueError("OpenAI API key not set.")
-            if stream:
-                return self._stream_openai(model, messages, **kwargs)
+        async def complete(self, prompt: str, model: str, temperature: float = 0.7, max_tokens: int = 4096) -> AsyncGenerator[str, None]:
+            if self.provider == 'openai':
+                response = await self.client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=True
+                )
+                async for chunk in response:
+                    if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+            elif self.provider == 'gemini':
+                # Adjust for Gemini's specific API if different from OpenAI's chat completions
+                # Assuming self.client is a gemini client (e.g., genai.GenerativeModel)
+                generation_config = {
+                    "temperature": temperature,
+                    "max_output_tokens": max_tokens
+                }
+                try:
+                    response = await self.client.generate_content(
+                        contents=[{"role": "user", "parts": [{"text": prompt}]}],
+                        generation_config=generation_config,
+                        stream=True
+                    )
+                    async for chunk in response:
+                        # Gemini chunks might contain multiple parts or different structures
+                        if chunk.parts:
+                            for part in chunk.parts:
+                                if hasattr(part, 'text') and part.text:
+                                    yield part.text
+                        elif hasattr(chunk, 'text') and chunk.text: # Direct text from some models/versions
+                            yield chunk.text
+                except Exception as e:
+                    # Fallback for Gemini if streaming fails or is not supported as expected
+                    print(f"Gemini streaming failed, falling back to non-streaming: {e}")
+                    response = await self.client.generate_content(
+                        contents=[{"role": "user", "parts": [{"text": prompt}]}],
+                        generation_config=generation_config,
+                        stream=False
+                    )
+                    if response.text:
+                        yield response.text
+                    else:
+                        raise RuntimeError("Gemini response had no text content.")
             else:
-                headers = {"Authorization": f"Bearer {self.openai_api_key}", "Content-Type": "application/json"}
-                payload = {"model": model, "messages": messages, **kwargs}
-                response = await self.client.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-                response.raise_for_status()
-                return response.json()
-        elif provider == "gemini":
-            if not self.gemini_api_key:
-                raise ValueError("Gemini API key not set.")
-
-            formatted_messages = []
-            for msg in messages:
-                role = "user" if msg["role"] == "user" else "model"
-                formatted_messages.append({"role": role, "parts": [{"text": msg["content"]}]})
-
-            if stream:
-                return self._stream_gemini(model, messages, **kwargs)
-            else:
-                headers = {"Content-Type": "application/json"}
-                payload = {"contents": formatted_messages, **kwargs}
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.gemini_api_key}"
-                response = await self.client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                return response.json()
-        else:
-            raise ValueError(f"Unsupported LLM provider: {provider}")
-
-# Example usage (for testing purposes, not part of the class itself)
-async def main():
+                # Fallback for other providers or non-streaming scenarios
+                # This assumes a unified `chat.completions.create` like interface or similar.
+                # You might need to adjust this for specific client implementations.
+                print(f"Provider {self.provider} does not support streaming, using non-streaming call.")
+                response = await self.client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=False
+                )
+                if response.choices and response.choices[0].message and response.choices[0].message.content:
+                    yield response.choices[0].message.content
+                else:
+                    raise RuntimeError("Non-streaming response had no content.")async def main():
     router = LLMRouter()
     messages = [{"role": "user", "content": "What is the capital of France?"}]
 
