@@ -106,6 +106,8 @@ async def complete_streaming(self, prompt: str, model: str = "gpt-4o", max_token
 
 
 # Placeholder for streaming complete method
+# Refactor for streaming responses
+# This method now returns an async generator for streaming.
 async def complete(self, messages, functions=None, function_call=None, stream=False, **kwargs):
     if stream:
         # Implement streaming logic here, yielding chunks
