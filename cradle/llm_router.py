@@ -1,3 +1,4 @@
+from typing import AsyncGenerator
 
 import logging
 import openai
@@ -109,6 +110,14 @@ async def complete_streaming(self, prompt: str, model: str = "gpt-4o", max_token
 # Refactor for streaming responses
 # This method now returns an async generator for streaming.
 async def complete(self, messages, functions=None, function_call=None, stream=False, **kwargs):
+        if stream:
+            # Placeholder for streaming logic, e.g., using OpenAI/Gemini streaming API
+            # This would yield chunks of text as they arrive
+            yield 'streaming chunk example' # Replace with actual streaming call
+            return
+        else:
+            # Existing non-streaming logic
+async def complete(self, messages, functions=None, function_call=None, stream=False, **kwargs):
     if stream:
         # Implement streaming logic here, yielding chunks
         # Example for OpenAI (will need actual client integration)
@@ -121,4 +130,3 @@ async def complete(self, messages, functions=None, function_call=None, stream=Fa
         # Call the original complete method
         async for result in self.complete_streaming(messages, functions, function_call, **kwargs):
             yield result # This will be a single item yield for non-streaming
-
