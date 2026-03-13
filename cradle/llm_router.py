@@ -107,3 +107,5 @@ class LLMRouter:
                 **kwargs
             )
             return {"choices": [{"message": {"content": part.text for part in response.parts}}]} # Simplified for non-streaming content
+
+# TODO: Implement streaming support for complete method
