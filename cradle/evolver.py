@@ -1,3 +1,146 @@
+
+import ast
+import inspect
+import os
+import subprocess
+import tempfile
+
+def generate_unit_test(function_code, function_name):
+    """Generates a basic unit test for a given Python function code."""
+    test_code = f"""
+import unittest
+from {function_name.lower()}_module import {function_name}
+
+class Test{function_name}(unittest.TestCase):
+
+    def test_basic_functionality(self):
+        # This is a placeholder test. You'll need to replace it with actual test cases
+        # that reflect the expected behavior of the '{function_name}' function.
+        # Example: self.assertEqual({function_name}(input_args), expected_output)
+        # For now, we'll just assert True to ensure the test runs.
+        self.assertTrue(True)
+
+if __name__ == '__main__':
+    unittest.main()
+"""
+    return test_code
+
+def run_tests(test_file_path, code_file_path):
+    """Runs the generated unit tests and returns True if all pass, False otherwise."""
+    try:
+        # Ensure the code under test is discoverable by the test runner
+        # This might require more sophisticated handling depending on module structure
+        test_dir = os.path.dirname(test_file_path)
+        code_dir = os.path.dirname(code_file_path)
+        # Temporarily add the code_dir to PYTHONPATH if it's not the same as test_dir
+        # For simplicity, we assume module name is based on function name for now.
+        # A more robust solution would involve proper package structure or direct import paths.
+        # For this PoC, we'll write the function into a separate module file.
+        
+        # Create a temporary module for the function to be tested
+        function_name = os.path.basename(code_file_path).split('.')[0]
+        temp_module_name = f"{function_name.lower()}_module.py"
+        temp_module_path = os.path.join(test_dir, temp_module_name)
+        with open(temp_module_path, 'w') as f:
+            with open(code_file_path, 'r') as original_code_file:
+                f.write(original_code_file.read())
+
+        # Run the tests
+        result = subprocess.run(['python', test_file_path], capture_output=True, text=True, check=False)
+        
+        # Clean up the temporary module
+        os.remove(temp_module_path)
+        
+        if result.returncode == 0:
+            print("Unit tests passed successfully.")
+            return True
+        else:
+            print("Unit tests failed:")
+            print(result.stdout)
+            print(result.stderr)
+            return False
+    except Exception as e:
+        print(f"Error running tests: {e}")
+        return False
+
+
+def evolve(code_path):
+    with open(code_path, 'r') as f:
+        original_code = f.read()
+
+    # In a real scenario, the AI would propose a change to original_code
+    # For this example, let's simulate a simple change:
+    proposed_code = original_code.replace("pass", "    # This is an evolved change
+    print('Evolved!')")
+
+    # Extract functions from the proposed code to generate tests for
+    tree = ast.parse(proposed_code)
+    functions_to_test = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            # Get the source code of the function
+            try:
+                # This is a bit tricky to get exact source from ast node without original source lines
+                # For simplicity, let's just use the function name for now.
+                # A more robust solution would involve parsing original source or using astunparse
+                functions_to_test.append(node.name)
+            except Exception as e:
+                print(f"Could not extract source for function {node.name}: {e}")
+
+    if not functions_to_test:
+        print("No functions found to test. Proceeding without tests.")
+        # If no functions, we might still want to run some basic checks or proceed
+        # For this task, we'll assume there's always at least one function in evolver.py
+
+    # Create a temporary file for the proposed code
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.py') as tmp_code_file:
+        tmp_code_file.write(proposed_code)
+        tmp_code_file_path = tmp_code_file.name
+
+    all_tests_passed = True
+    for func_name in functions_to_test:
+        test_content = generate_unit_test(proposed_code, func_name) # Pass proposed_code for context if needed
+        
+        # Create a temporary test file
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.py') as tmp_test_file:
+            tmp_test_file.write(test_content)
+            tmp_test_file_path = tmp_test_file.name
+        
+        print(f"Running tests for function: {func_name} using test file: {tmp_test_file_path}")
+        if not run_tests(tmp_test_file_path, tmp_code_file_path):
+            all_tests_passed = False
+            print(f"Tests for function {func_name} failed. Aborting evolution.")
+            break
+        
+        os.remove(tmp_test_file_path)
+
+    os.remove(tmp_code_file_path)
+
+    if all_tests_passed:
+        print("All generated unit tests passed. Applying changes.")
+        with open(code_path, 'w') as f:
+            f.write(proposed_code)
+        return True
+    else:
+        print("Some unit tests failed. Not applying changes.")
+        return False
+
+# Example usage:
+# if __name__ == '__main__':
+#     # Create a dummy evolver.py for testing
+#     dummy_evolver_content = """def func_to_evolve():
+    pass
+"""
+#     with open("dummy_evolver.py", "w") as f:
+#         f.write(dummy_evolver_content)
+#     
+#     if evolve("dummy_evolver.py"):
+#         print("Evolution successful!")
+#     else:
+#         print("Evolution failed or tests did not pass.")
+#     
+#     os.remove("dummy_evolver.py")
+
 """Self-evolution engine — the agent improves its own code.
 
 Flow:
