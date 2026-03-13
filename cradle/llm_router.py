@@ -1,5 +1,6 @@
 import httpx
 import asyncio
+import typing
 
 import openai
 import google.generativeai as genai
@@ -11,30 +12,25 @@ class LLMRouter:
         self.openai_client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-    async def complete(self, provider: str, model: str, messages: list, stream: bool = False, **kwargs) -> AsyncGenerator[Dict[str, Any], None] | Dict[str, Any]:
-        # CRADLE_EDIT: Added streaming support
-        # This section needs to be refactored to handle streaming responses from LLM providers.
-        # For OpenAI, add `stream=True` to the API call and iterate over the response.
-        # Example for OpenAI:
-        # if self.provider == 'openai':
-        #     response_stream = await self.openai_client.chat.completions.create(model=model, messages=messages, stream=True, **kwargs)
-        #     async for chunk in response_stream:
-        #         if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-        #             yield chunk.choices[0].delta.content
-        # For Gemini, use the appropriate streaming method and yield chunks.
-        # Example for Gemini:
-        # if self.provider == 'gemini':
-        #     response_stream = await self.gemini_client.generate_content(model=model, contents=messages, stream=True, **kwargs)
-        #     async for chunk in response_stream:
-        #         if chunk.text:
-        #             yield chunk.text
-        # TODO: Implement actual streaming logic and return an async generator
-        if provider == "openai":
-        # CRADLE_EDIT: Original non-streaming return removed. Implement streaming logic above.
-        elif provider == "gemini":
-            return await self._gemini_complete(model, messages, stream, **kwargs)
+
+    async def complete(self, messages: list[dict], model: str = None, **kwargs) -> typing.AsyncGenerator[str, None]:
+        # Determine the provider based on the model or configuration
+        provider_name = self._determine_provider(model)
+        provider = self.providers.get(provider_name)
+
+        if not provider:
+            raise ValueError(f"No provider found for model: {model}")
+
+        # Assuming provider has a streaming_complete method
+        # This will need to be implemented for each provider (OpenAI, Gemini, etc.)
+        if hasattr(provider, 'streaming_complete') and callable(provider.streaming_complete):
+            async for chunk in provider.streaming_complete(messages, model, **kwargs):
+                yield chunk
         else:
-            raise ValueError(f"Unsupported LLM provider: {provider}")
+            # Fallback to non-streaming if streaming is not supported by the provider
+            # or if it's explicitly not requested.
+            response = await provider.complete(messages, model, **kwargs)
+            yield response
 
     async def _openai_complete(self, model: str, messages: list, stream: bool, **kwargs) -> AsyncGenerator[Dict[str, Any], None] | Dict[str, Any]:
         if stream:
