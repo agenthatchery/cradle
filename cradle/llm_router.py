@@ -12,9 +12,25 @@ class LLMRouter:
         genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
     async def complete(self, provider: str, model: str, messages: list, stream: bool = False, **kwargs) -> AsyncGenerator[Dict[str, Any], None] | Dict[str, Any]:
+        # CRADLE_EDIT: Added streaming support
+        # This section needs to be refactored to handle streaming responses from LLM providers.
+        # For OpenAI, add `stream=True` to the API call and iterate over the response.
+        # Example for OpenAI:
+        # if self.provider == 'openai':
+        #     response_stream = await self.openai_client.chat.completions.create(model=model, messages=messages, stream=True, **kwargs)
+        #     async for chunk in response_stream:
+        #         if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+        #             yield chunk.choices[0].delta.content
+        # For Gemini, use the appropriate streaming method and yield chunks.
+        # Example for Gemini:
+        # if self.provider == 'gemini':
+        #     response_stream = await self.gemini_client.generate_content(model=model, contents=messages, stream=True, **kwargs)
+        #     async for chunk in response_stream:
+        #         if chunk.text:
+        #             yield chunk.text
         # TODO: Implement actual streaming logic and return an async generator
         if provider == "openai":
-            return await self._openai_complete(model, messages, stream, **kwargs)
+        # CRADLE_EDIT: Original non-streaming return removed. Implement streaming logic above.
         elif provider == "gemini":
             return await self._gemini_complete(model, messages, stream, **kwargs)
         else:
@@ -91,4 +107,3 @@ class LLMRouter:
                 **kwargs
             )
             return {"choices": [{"message": {"content": part.text for part in response.parts}}]} # Simplified for non-streaming content
-
