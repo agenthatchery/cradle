@@ -125,3 +125,16 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+@bot.message_handler(commands=['plan'])
+def send_plan(message):
+    try:
+        task_tree = task_engine.get_task_tree_string()
+        if task_tree:
+            bot.reply_to(message, f"Current Task Plan:
+{task_tree}")
+        else:
+            bot.reply_to(message, "No active tasks found.")
+    except Exception as e:
+        bot.reply_to(message, f"Error retrieving task plan: {e}")
+

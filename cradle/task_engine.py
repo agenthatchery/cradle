@@ -426,3 +426,21 @@ stderr:
     @property
     def pending_count(self) -> int:
         return self._queue.qsize()
+    
+    
+    def get_task_tree_string(self):
+        if not self.tasks:
+            return "No active tasks."
+    
+        # For now, let's just list the top-level tasks.
+        # A more sophisticated implementation would traverse the actual task tree.
+        tree_string = ""
+        for i, task_id in enumerate(self.tasks):
+            task = self.tasks[task_id]
+            tree_string += f"{i+1}. {task.description} (Status: {task.status})
+    "
+            # If tasks have subtasks, you'd recursively call something here.
+            # For this first pass, we'll keep it simple.
+        return tree_string
+    
+    
