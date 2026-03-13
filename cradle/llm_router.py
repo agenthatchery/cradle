@@ -29,6 +29,32 @@ class LLMRouter:
                 **kwargs
             )
             async def generator():
+
+    async def stream_complete(self, messages, functions=None, function_call=None, provider=None, model=None, temperature=0, max_tokens=None, **kwargs):
+        # Placeholder for streaming logic
+        # This method should yield chunks of response as they arrive.
+        # Example for OpenAI:
+        # client = self._get_client(provider)
+        # stream = await client.chat.completions.create(
+        #     messages=messages,
+        #     model=model,
+        #     stream=True,
+        #     **kwargs
+        # )
+        # async for chunk in stream:
+        #     yield chunk.choices[0].delta.content or ""
+        
+        # For now, simulate a streaming response
+        yield "This "
+        await asyncio.sleep(0.1)
+        yield "is "
+        await asyncio.sleep(0.1)
+        yield "a "
+        await asyncio.sleep(0.1)
+        yield "streaming "
+        await asyncio.sleep(0.1)
+        yield "response."
+
                 async for chunk in response_stream:
                     yield chunk.dict()
             return generator()
