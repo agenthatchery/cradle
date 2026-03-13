@@ -1,124 +1,76 @@
 
 import os
 import json
-import httpx
+from typing import Optional, Dict, Any
+import google.generativeai as genai
 
-def llm_code_review(file_content: str, file_path: str, diff: str = None) -> dict:
+def llm_code_review(file_path: str, diff: Optional[str] = None) -> Dict[str, Any]:
     """
-    Performs an LLM-powered code review on the given file content or diff.
+    Performs an LLM-powered code review on a given file or diff.
 
     Args:
-        file_content: The full content of the file to review.
-        file_path: The path of the file being reviewed.
-        diff: An optional diff string to review. If provided, the LLM will focus on the changes.
+        file_path (str): The path to the file to review.
+        diff (Optional[str]): An optional diff string to review. If provided,
+                              the review will focus on the changes.
 
     Returns:
-        A JSON object with actionable recommendations.
+        Dict[str, Any]: A JSON object with actionable recommendations.
     """
+    if not os.path.exists(file_path):
+        return {"error": f"File not found: {file_path}"}
+
+    with open(file_path, 'r') as f:
+        file_content = f.read()
+
+    # Configure Gemini API
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
     if not gemini_api_key:
-        raise ValueError("GEMINI_API_KEY environment variable not set.")
+        return {"error": "GEMINI_API_KEY environment variable not set."}
+    genai.configure(api_key=gemini_api_key)
 
-    headers = {
-        "Content-Type": "application/json",
-    }
+    model = genai.GenerativeModel('gemini-1.5-pro') # Using 1.5 Pro as 3.1 Pro might not be available or stable yet
 
     prompt_parts = [
-        f"You are an expert code reviewer. Your task is to perform a thorough code review on the following {'diff' if diff else 'file content'}. "
-        "Identify potential bugs, security vulnerabilities, performance issues, and style guide violations. "
-        "Provide actionable recommendations in a JSON object format. The JSON should have a 'summary' string "
-        "and a 'recommendations' list, where each recommendation is an object with 'type' (e.g., 'bug', 'security', 'performance', 'style'), "
-        "'description', and 'severity' (e.g., 'critical', 'high', 'medium', 'low').
-
+        "You are an expert code reviewer. Perform a thorough code review focusing on potential bugs, security vulnerabilities, performance issues, and style guide violations.",
+        "Provide actionable recommendations in a JSON format. The JSON should be an array of objects, where each object has 'line', 'severity' (e.g., 'critical', 'high', 'medium', 'low', 'info'), 'category' (e.g., 'bug', 'security', 'performance', 'style'), and 'recommendation' fields.",
+        "If there are no issues, return an empty array. Do not include any other text outside the JSON.",
+        "---
 "
     ]
 
     if diff:
-        prompt_parts.append(f"File: {file_path}
-Diff:
+        prompt_parts.append(f"Review the following diff for file `{file_path}`:
 ```diff
 {diff}
 ```
 ")
+        prompt_parts.append(f"Here is the full file content for context:
+```
+{file_content}
+```
+")
     else:
-        prompt_parts.append(f"File: {file_path}
-Content:
+        prompt_parts.append(f"Review the following file content for `{file_path}`:
 ```
 {file_content}
 ```
 ")
 
-    prompt_parts.append("
-Review result (JSON object):
-")
+    prompt_parts.append("---
+JSON Output:")
 
     try:
-        response = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={gemini_api_key}",
-            headers=headers,
-            json={
-                "contents": [{
-                    "parts": [{
-                        "text": "".join(prompt_parts)
-                    }]
-                }],
-                "generationConfig": {
-                    "temperature": 0.2,
-                    "topK": 40,
-                    "topP": 0.95,
-                    "maxOutputTokens": 2048,
-                },
-                "safetySettings": [
-                    {
-                        "category": "HARM_CATEGORY_HARASSMENT",
-                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_HATE_SPEECH",
-                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-                    },
-                ]
-            },
-            timeout=60 # Increased timeout for potentially longer LLM responses
-        )
-        response.raise_for_status() # Raise an exception for HTTP errors
+        response = model.generate_content("
+".join(prompt_parts))
+        # The API might return text with markdown fences, try to extract JSON
+        response_text = response.text.strip()
+        if response_text.startswith('```json') and response_text.endswith('```'):
+            json_str = response_text[7:-3].strip()
+        else:
+            json_str = response_text
 
-        response_data = response.json()
-        
-        # Extract the text content from the response
-        # The structure can be complex, so we need to navigate it carefully
-        if 'candidates' in response_data and response_data['candidates']:
-            first_candidate = response_data['candidates'][0]
-            if 'content' in first_candidate and 'parts' in first_candidate['content']:
-                for part in first_candidate['content']['parts']:
-                    if 'text' in part:
-                        # Attempt to parse the text as JSON
-                        try:
-                            # Gemini sometimes wraps JSON in markdown fences
-                            text_content = part['text'].strip()
-                            if text_content.startswith('```json') and text_content.endswith('```'):
-                                text_content = text_content[7:-3].strip()
-                            elif text_content.startswith('```') and text_content.endswith('```'):
-                                text_content = text_content[3:-3].strip()
-
-                            return json.loads(text_content)
-                        except json.JSONDecodeError:
-                            print(f"Warning: LLM response was not valid JSON: {part['text']}")
-                            # If not valid JSON, return a basic error structure
-                            return {"summary": "LLM response could not be parsed as JSON.", "recommendations": []}
-        
-        return {"summary": "No valid content found in LLM response.", "recommendations": []}
-
-    except httpx.RequestError as e:
-        return {"summary": f"Network or HTTP error during LLM call: {e}", "recommendations": []}
+        review_results = json.loads(json_str)
+        return {"review_results": review_results}
     except Exception as e:
-        return {"summary": f"An unexpected error occurred: {e}", "recommendations": []}
+        return {"error": f"LLM API call or JSON parsing failed: {e}", "raw_response": response.text if 'response' in locals() else 'No response'}
 
