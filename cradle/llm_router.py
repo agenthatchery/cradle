@@ -1,5 +1,6 @@
 
 import asyncio
+from typing import AsyncGenerator
 import httpx
 import json
 import os
@@ -20,6 +21,10 @@ class LLMRouter:
         logger.info(f"LLM provider set to {self.active_provider}")
 
 async def complete(self, model_name: str, messages: list, max_tokens: int, temperature: float, provider: str):
+        # TODO: Implement streaming logic here for providers that support it.
+        # For example, for OpenAI/Gemini, use their streaming API and `yield` chunks.
+        # For non-streaming providers, process the full response and then `yield` it once.
+        # For now, this is a placeholder to indicate the change.
         if provider == "openai":
             import openai
             client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
