@@ -27,7 +27,7 @@ class Sandbox:
         if self.memory:
             run_args['mem_limit'] = self.memory
 
-        container = self.client.containers.run(**run_args)
+        container = self.client.containers.run(**run_args, cpus=config.DOCKER_CPU_LIMIT, mem_limit=config.DOCKER_MEMORY_LIMIT)
         return container.logs(stream=True)
 
     def stop_container(self, container_id):
