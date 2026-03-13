@@ -1,132 +1,91 @@
-from typing import AsyncGenerator
 
-import logging
-import openai
-from openai import AsyncOpenAI
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
-import os
 import asyncio
+import json
+import logging
+import os
+from typing import AsyncGenerator, Dict, Any, List, Optional
+
+import httpx
+from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessage, ChatCompletion
+from openai.types.chat.chat_completion_chunk import ChatCompletionChunk, ChoiceDelta
 
 logger = logging.getLogger(__name__)
 
 class LLMRouter:
     def __init__(self):
         self.openai_client = None
-        self.gemini_client = None
+        self.gemini_client = None # Placeholder for Gemini client
         self._initialize_clients()
 
     def _initialize_clients(self):
-        openai_api_key = os.environ.get("OPENAI_API_KEY")
-        if openai_api_key:
-            self.openai_client = AsyncOpenAI(api_key=openai_api_key)
-            logger.info("OpenAI client initialized.")
-        else:
-            logger.warning("OPENAI_API_KEY not found. OpenAI client not initialized.")
+        if os.environ.get("OPENAI_API_KEY"):
+            self.openai_client = AsyncOpenAI()
+        # if os.environ.get("GEMINI_API_KEY"):
+        #     self.gemini_client = some_gemini_client_init()
 
-        gemini_api_key = os.environ.get("GEMINI_API_KEY")
-        if gemini_api_key:
-            genai.configure(api_key=gemini_api_key)
-            self.gemini_client = genai
-            logger.info("Gemini client initialized.")
-        else:
-            logger.warning("GEMINI_API_KEY not found. Gemini client not initialized.")
-
-    # Streaming support placeholder
-async def complete_streaming(self, prompt: str, model: str = "gpt-4o", max_tokens: int = 1000, temperature: float = 0.7, stream: bool = False):
+    async def complete(self, messages: List[Dict[str, str]], model: str = "gpt-4o", **kwargs) -> AsyncGenerator[str, None]:
         """
-        Generates a completion from an LLM. Supports streaming responses.
+        Completes a chat interaction with the specified LLM, supporting streaming.
+        Yields string chunks of the response.
         """
-        if model.startswith("gpt"):
-            if not self.openai_client:
-                raise ValueError("OpenAI client not initialized.")
-            return await self._openai_complete(prompt, model, max_tokens, temperature, stream)
-        elif model.startswith("gemini"):
-            if not self.gemini_client:
-                raise ValueError("Gemini client not initialized.")
-            return await self._gemini_complete(prompt, model, max_tokens, temperature, stream)
+        logger.info(f"Attempting LLM completion with model: {model}")
+
+        if model.startswith("gpt") and self.openai_client:
+            async for chunk in self._openai_stream_complete(messages, model, **kwargs):
+                yield chunk
+        # elif model.startswith("gemini") and self.gemini_client:
+        #     async for chunk in self._gemini_stream_complete(messages, model, **kwargs):
+        #         yield chunk
         else:
-            raise ValueError(f"Unsupported model: {model}")
+            # Fallback for non-streaming or unsupported models/clients
+            logger.warning(f"Streaming not supported for model {model} or client not initialized. Falling back to non-streaming.")
+            full_response = await self._non_streaming_complete(messages, model, **kwargs)
+            yield full_response
 
-    async def _openai_complete(self, prompt: str, model: str, max_tokens: int, temperature: float, stream: bool):
-        messages = [{"role": "user", "content": prompt}]
-        try:
-            if stream:
-                async def generator():
-                    async for chunk in await self.openai_client.chat.completions.create(
-                        model=model,
-                        messages=messages,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        stream=True,
-                    ):
-                        if chunk.choices and chunk.choices[0].delta.content:
-                            yield chunk.choices[0].delta.content
-                return generator()
-            else:
-                response = await self.openai_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    stream=False,
-                )
-                return response.choices[0].message.content
-        except openai.APIStatusError as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise
 
-    async def _gemini_complete(self, prompt: str, model: str, max_tokens: int, temperature: float, stream: bool):
-        generation_config = GenerationConfig(
-            max_output_tokens=max_tokens,
-            temperature=temperature,
-        )
+    async def _openai_stream_complete(self, messages: List[Dict[str, str]], model: str, **kwargs) -> AsyncGenerator[str, None]:
         try:
-            if stream:
-                async def generator():
-                    response_stream = await self.gemini_client.get_model(model).generate_content(
-                        prompt,
-                        generation_config=generation_config,
-                        stream=True,
-                    )
-                    async for chunk in response_stream:
-                        if chunk.text:
-                            yield chunk.text
-                return generator()
-            else:
-                response = await self.gemini_client.get_model(model).generate_content(
-                    prompt,
-                    generation_config=generation_config,
-                    stream=False,
-                )
-                return response.text
+            stream = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=True,
+                **kwargs
+            )
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
         except Exception as e:
-            logger.error(f"Gemini API error: {e}")
+            logger.error(f"OpenAI streaming error: {e}")
             raise
 
+    # Placeholder for Gemini streaming
+    # async def _gemini_stream_complete(self, messages: List[Dict[str, str]], model: str, **kwargs) -> AsyncGenerator[str, None]:
+    #     try:
+    #         # Assuming Gemini client has a similar streaming interface
+    #         stream = await self.gemini_client.generate_content_async(
+    #             contents=[{'role': m['role'], 'parts': [{'text': m['content']}]} for m in messages],
+    #             stream=True,
+    #             model=model,
+    #             **kwargs
+    #         )
+    #         async for chunk in stream:
+    #             if chunk.text:
+    #                 yield chunk.text
+    #     except Exception as e:
+    #         logger.error(f"Gemini streaming error: {e}")
+    #         raise
 
-
-# Placeholder for streaming complete method
-# Refactor for streaming responses
-# This method now returns an async generator for streaming.
-async def complete(self, messages, functions=None, function_call=None, stream=False, **kwargs):
-        if stream:
-            # Placeholder for streaming logic, e.g., using OpenAI/Gemini streaming API
-            # This would yield chunks of text as they arrive
-            yield 'streaming chunk example' # Replace with actual streaming call
-            return
+    async def _non_streaming_complete(self, messages: List[Dict[str, str]], model: str, **kwargs) -> str:
+        """Handles non-streaming completion for models without explicit streaming support or as a fallback."""
+        if model.startswith("gpt") and self.openai_client:
+            response: ChatCompletion = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                **kwargs
+            )
+            return response.choices[0].message.content if response.choices else ""
+        # Add other non-streaming clients here if needed
         else:
-            # Existing non-streaming logic
-async def complete(self, messages, functions=None, function_call=None, stream=False, **kwargs):
-    if stream:
-        # Implement streaming logic here, yielding chunks
-        # Example for OpenAI (will need actual client integration)
-        # client = self._get_client(provider)
-        # response = await client.chat.completions.create(..., stream=True)
-        # async for chunk in response:
-        #    yield chunk.choices[0].delta.content
-        yield "STREAMING_PLACEHOLDER_CHUNK"
-    else:
-        # Call the original complete method
-        async for result in self.complete_streaming(messages, functions, function_call, **kwargs):
-            yield result # This will be a single item yield for non-streaming
+            raise ValueError(f"No client available for model: {model}")
+
