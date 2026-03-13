@@ -437,3 +437,8 @@ def _generate_and_run_tests(proposed_code: str) -> bool:
 # ... (existing evolver logic would call _generate_and_run_tests before applying changes)
 
 # Cradle AI: Initial placeholder for unit test generation (attempt 2)
+# Placeholder for automated unit test generation and execution
+# 1. Generate unit tests based on proposed changes
+# 2. Write tests to a temporary file
+# 3. Run tests in sandbox
+# 4. Only proceed if both code and new tests pass
