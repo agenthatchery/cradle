@@ -25,3 +25,4 @@ SANDBOX_CPU_LIMIT = os.environ.get('CRADLE_SANDBOX_CPU_LIMIT', '1.0') # e.g., '0
 SANDBOX_MEMORY_LIMIT = os.environ.get('CRADLE_SANDBOX_MEMORY_LIMIT', '1g') # e.g., '512m', '2g'
 DOCKER_CPU_LIMIT = os.environ.get('CRADLE_DOCKER_CPU_LIMIT', '1.0')  # e.g., '0.5' for 50% of one CPU, '2.0' for two CPUs
 DOCKER_MEMORY_LIMIT = os.environ.get('CRADLE_DOCKER_MEMORY_LIMIT', '2g') # e.g., '512m', '2g'
+PROVIDERS = ['groq', 'gemini-flash', 'openai']
