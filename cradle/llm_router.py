@@ -10,6 +10,7 @@ class LLMRouter:
         genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
     async def complete(self, provider: str, model: str, messages: list, stream: bool = False, **kwargs) -> AsyncGenerator[Dict[str, Any], None] | Dict[str, Any]:
+        # TODO: Implement actual streaming logic and return an async generator
         if provider == "openai":
             return await self._openai_complete(model, messages, stream, **kwargs)
         elif provider == "gemini":
