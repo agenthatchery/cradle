@@ -1,89 +1,138 @@
 
-import os
 import json
+import os
 from typing import Optional
 
-# Placeholder for Gemini client import. Replace with actual client when available.
-# For now, we'll simulate it or use a direct HTTP call if necessary.
+import google.generativeai as genai
 
-# Assuming GEMINI_API_KEY is available in the environment
-def _call_gemini_api(prompt: str) -> str:
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = genai.GenerativeModel('gemini-1.5-pro') # Using 1.5 Pro as 3.1 Pro might not be generally available or stable.
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"Error calling Gemini API: {e}"
-
-def code_review(file_path: str, diff: Optional[str] = None) -> dict:
+def code_review(file_path: str, diff: Optional[str] = None) -> str:
     """
     Performs an LLM-powered code review on a given file or diff.
 
     Args:
-        file_path (str): The path to the file to be reviewed.
-        diff (Optional[str]): An optional diff string to review specific changes.
+        file_path: The path to the file to be reviewed.
+        diff: Optional. A string containing the diff to be reviewed.
+              If provided, the LLM will focus on the changes.
 
     Returns:
-        dict: A JSON object with actionable recommendations.
+        A JSON string with actionable recommendations.
     """
-    content_to_review = ""
-    if diff:
-        review_type = "diff"
-        content_to_review = diff
-    elif os.path.exists(file_path):
-        review_type = "file"
-        with open(file_path, 'r') as f:
-            content_to_review = f.read()
-    else:
-        return {"error": f"File not found: {file_path} and no diff provided."}
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_api_key:
+        raise ValueError("GEMINI_API_KEY environment variable not set.")
 
-    if not content_to_review:
-        return {"error": "No content to review.", "file_path": file_path, "diff_provided": bool(diff)}
+    genai.configure(api_key=gemini_api_key)
+    model = genai.GenerativeModel('gemini-1.5-pro') # Using 1.5 Pro as 3.1 Pro might not be available or might be 1.5 Pro internally
 
-    prompt = f"""You are an expert code reviewer. Your task is to perform a thorough code review.
-Focus on identifying potential bugs, security vulnerabilities, performance issues, and style guide violations.
-Provide actionable recommendations in a JSON format.
-
-Review the following {review_type} for '{file_path}':
-
-```
-{content_to_review}
-```
-
-Your output MUST be a JSON object with the following structure:
-{{
-    "summary": "Overall summary of the review.",
-    "recommendations": [
-        {{
-            "type": "bug" | "security" | "performance" | "style" | "other",
-            "description": "Detailed description of the issue.",
-            "severity": "low" | "medium" | "high",
-            "line_numbers": [int], // Optional, relevant line numbers if applicable
-            "suggested_fix": "Code snippet or detailed instruction for fixing the issue."
-        }}
-    ]
-}}
-
-Ensure the JSON is well-formed and directly parsable.
-"""
-
-    print(f"[*] Sending {review_type} for '{file_path}' to Gemini for review...")
     try:
-        llm_response_text = _call_gemini_api(prompt)
-        # Attempt to parse the JSON response
-        if llm_response_text.startswith('```json') and llm_response_text.endswith('```'):
-            llm_response_text = llm_response_text[7:-3].strip()
-        elif llm_response_text.startswith('```') and llm_response_text.endswith('```'): # Handle cases where it might just be ```
-            llm_response_text = llm_response_text[3:-3].strip()
-
-        review_result = json.loads(llm_response_text)
-        return review_result
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON from LLM response: {e}")
-        print(f"LLM Raw Response: {llm_response_text}")
-        return {"error": "Failed to parse LLM response as JSON", "raw_response": llm_response_text, "exception": str(e)}
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+    except FileNotFoundError:
+        return json.dumps({"error": f"File not found: {file_path}"})
     except Exception as e:
-        return {"error": f"An unexpected error occurred during LLM call or processing: {e}", "details": str(e)}
+        return json.dumps({"error": f"Error reading file {file_path}: {str(e)}"})
 
+    prompt_parts = [
+        "You are an expert code reviewer. Perform a thorough code review focusing on:",
+        "- Potential bugs and logical errors",
+        "- Security vulnerabilities (e.g., injection, XSS, insecure deserialization)",
+        "- Performance issues (e.g., inefficient algorithms, N+1 queries)",
+        "- Style guide violations (e.g., PEP8 for Python, ESLint for JS, etc.)",
+        "- Best practices and design patterns",
+        "- Readability and maintainability",
+        "Provide actionable recommendations in a JSON array format. Each recommendation should include: `category`, `severity` (low, medium, high, critical), `line_number` (if applicable), `description`, and `recommendation`.",
+        "If there are no issues, return an empty array.",
+        "
+
+---",
+        f"
+File: {file_path}"
+    ]
+
+    if diff:
+        prompt_parts.append("
+Review the following diff:")
+        prompt_parts.append(f"
+```diff
+{diff}
+```")
+        prompt_parts.append("
+And the full file content for context:")
+        prompt_parts.append(f"
+```
+{file_content}
+```")
+    else:
+        prompt_parts.append("
+Review the following file content:")
+        prompt_parts.append(f"
+```
+{file_content}
+```")
+
+    try:
+        response = model.generate_content("
+".join(prompt_parts))
+        # Attempt to parse the response as JSON. Handle cases where the LLM might wrap it in markdown.
+        text_response = response.text.strip()
+        if text_response.startswith('```json') and text_response.endswith('```'):
+            text_response = text_response[7:-3].strip()
+        json_output = json.loads(text_response)
+        return json.dumps(json_output, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"LLM generation or parsing failed: {str(e)}", "llm_raw_response": response.text if 'response' in locals() else "No response"})
+
+
+if __name__ == '__main__':
+    # Example usage (for local testing)
+    # Create a dummy file for testing
+    test_file_path = "test_code.py"
+    with open(test_file_path, "w") as f:
+        f.write("""
+def add(a, b):
+    # This is a comment
+    result = a + b
+    print(f"The result is {result}")
+    return result
+
+def insecure_func(user_input):
+    # Potential security vulnerability: direct string concatenation in eval
+    eval("print('" + user_input + "')")
+
+def performance_issue():
+    # Inefficient loop example
+    data = list(range(10000))
+    for i in range(len(data)):
+        for j in range(len(data)):
+            pass # O(n^2) operation
+
+if __name__ == '__main__':
+    add(1, 2)
+    insecure_func("__import__('os').system('echo pwned')")
+    performance_issue()
+""")
+
+    print(f"
+--- Reviewing {test_file_path} ---")
+    review_output = code_review(test_file_path)
+    print(review_output)
+
+    # Example with a diff (simulated)
+    print(f"
+--- Reviewing diff for {test_file_path} ---")
+    dummy_diff = """
+--- a/test_code.py
++++ b/test_code.py
+@@ -1,7 +1,8 @@
+ def add(a, b):
+     # This is a comment
+     result = a + b
+-    print(f"The result is {result}")
++    # Added a new line here
++    print(f"Calculated: {result}")
+     return result
+ """
+    diff_review_output = code_review(test_file_path, diff=dummy_diff)
+    print(diff_review_output)
+
+    os.remove(test_file_path)
