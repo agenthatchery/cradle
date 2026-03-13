@@ -417,3 +417,21 @@ def generate_and_run_tests(code_changes):
     # This function would contain the logic to generate, write, and execute tests
     print('Generating and running tests...')
     return True # Simulate success for now
+
+
+def _generate_and_run_tests(proposed_code: str) -> bool:
+    """
+    Generates unit tests for the proposed code, runs them in a sandbox,
+    and returns True if both the code and tests pass, False otherwise.
+    This is a placeholder for actual test generation and execution logic.
+    """
+    print("DEBUG: Attempting to generate and run tests...")
+    # In a real scenario, this would involve:
+    # 1. Writing proposed_code to a temp file (e.g., 'proposed_change.py')
+    # 2. Generating test code based on proposed_code (e.g., 'test_proposed_change.py')
+    # 3. Running 'python proposed_change.py' and 'pytest test_proposed_change.py' in a sandbox
+    # 4. Capturing stdout/stderr and exit codes.
+    # For demonstration, we'll assume success for now.
+    return True
+
+# ... (existing evolver logic would call _generate_and_run_tests before applying changes)
