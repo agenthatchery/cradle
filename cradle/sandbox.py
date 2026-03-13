@@ -1,3 +1,5 @@
+from .config import Config
+
 from cradle import config
 import config
 
