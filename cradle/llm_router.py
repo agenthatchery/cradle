@@ -19,38 +19,38 @@ class LLMRouter:
         self.active_provider = provider
         logger.info(f"LLM provider set to {self.active_provider}")
 
-    async def complete(self, messages: list, model: str = None, **kwargs):
-        if self.active_provider == "openai":
-            async for chunk in self._openai_complete(messages, model, **kwargs):
-                yield chunk
-        elif self.active_provider == "gemini":
-            async for chunk in self._gemini_complete(messages, model, **kwargs):
-                yield chunk
+async def complete(self, model_name: str, messages: list, max_tokens: int, temperature: float, provider: str):
+        if provider == "openai":
+            import openai
+            client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            stream = await client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True
+            )
+            async for chunk in stream:
+                yield chunk.choices[0].delta.content or ""
+        elif provider == "gemini":
+            import google.generativeai as genai
+            genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+            model = genai.GenerativeModel(model_name)
+            response_stream = await model.generate_content(
+                contents=messages,
+                generation_config={'max_output_tokens': max_tokens, 'temperature': temperature},
+                stream=True
+            )
+            async for chunk in response_stream:
+                yield chunk.text
         else:
-            raise ValueError(f"Unsupported LLM provider: {self.active_provider}")
+            # Fallback for non-streaming providers or error
+            # For now, I'll just raise an error, but a non-streaming fallback could be implemented
+            raise NotImplementedError(f"Streaming not supported for provider: {provider}")
 
-    async def _openai_complete(self, messages: list, model: str = None, **kwargs):
-        if not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY not set.")
         
-        headers = {
-            "Authorization": f"Bearer {self.openai_api_key}",
-            "Content-Type": "application/json",
-        }
         
-        payload = {
-            "model": model or "gpt-4o",
-            "messages": messages,
-            "stream": True,
-            **kwargs
-        }
 
-        async with httpx.AsyncClient() as client:
-            try:
-                async with client.stream("POST", "https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=None) as response:
-                    response.raise_for_status()
-                    async for chunk in response.aiter_bytes():
-                        # OpenAI streams data in the format 'data: {json_object}
 
 '
                         # We need to parse each line. A chunk might contain multiple lines.
