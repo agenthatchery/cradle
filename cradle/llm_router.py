@@ -31,7 +31,8 @@ class LLMRouter:
         else:
             logger.warning("GEMINI_API_KEY not found. Gemini client not initialized.")
 
-    async def complete(self, prompt: str, model: str = "gpt-4o", max_tokens: int = 1000, temperature: float = 0.7, stream: bool = False):
+    # Streaming support placeholder
+async def complete(self, prompt: str, model: str = "gpt-4o", max_tokens: int = 1000, temperature: float = 0.7, stream: bool = False):
         """
         Generates a completion from an LLM. Supports streaming responses.
         """
