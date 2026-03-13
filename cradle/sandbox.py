@@ -1,8 +1,3 @@
-from . import config
-from . import config
-from .config import SANDBOX_CPU_LIMIT, SANDBOX_MEMORY_LIMIT
-import os
-import config
 
 import docker
 
@@ -12,21 +7,27 @@ class Sandbox:
         self.cpus = cpus
         self.memory = memory
 
-    def run_container(self, image, command, environment=None, volumes=None):
-        container_config = {
+    def run_container(self, image, command):
+        run_args = {
             'image': image,
             'command': command,
             'detach': True,
             'remove': True,
-            'environment': environment or {},
-            'volumes': volumes or {},
         }
-        if self.cpus is not None:
-            container_config['cpus'] = self.cpus
-        if self.memory is not None:
-            container_config['mem_limit'] = self.memory
+        if self.cpus:
+            run_args['cpus'] = self.cpus
+        if self.memory:
+            run_args['mem_limit'] = self.memory
 
-        container = self.client.containers.run(**container_config)
+        container = self.client.containers.run(**run_args)
         return container.logs(stream=True)
 
-# Placeholder for other sandbox functions or classes
+    def stop_container(self, container_id):
+        container = self.client.containers.get(container_id)
+        container.stop()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()
