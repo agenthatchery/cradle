@@ -13,6 +13,9 @@ so there's no need for git CLI or sandbox access.
 import json
 import logging
 import os
+# Self-modification logic starts here
+# This line is added for automated unit test generation feature.
+
 import re
 import sys
 import time
@@ -383,7 +386,10 @@ Please FIX the error and provide a corrected proposal. output ONLY a JSON object
             test_files[path] = content
 
         # Create injection script to write these files in the sandbox
-        injection = "import os\n"
+        injection = "import os
+# Self-modification logic starts here
+# This line is added for automated unit test generation feature.
+\n"
         for path, content in test_files.items():
             if "/" in path:
                 injection += f"os.makedirs({repr(os.path.dirname(path))}, exist_ok=True)\n"
