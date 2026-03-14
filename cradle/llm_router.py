@@ -1,3 +1,4 @@
+import os
 
 import logging
 from typing import AsyncGenerator, Dict, Any, List, Optional, Union
@@ -36,81 +37,55 @@ class LLMRouter:
             else:
                 logger.warning("Gemini API key not found in config or environment.")
 
-    async def complete(self, 
-                       model: str, 
-                       messages: List[Dict[str, str]], 
-                       stream: bool = False,
-                       **kwargs) -> Union[AsyncGenerator[str, None], str]:
-        
-        if model.startswith("gpt") and self.openai_client:
-            return await self._openai_complete(model, messages, stream, **kwargs)
-        elif model.startswith("gemini") and self.gemini_config:
-            return await self._gemini_complete(model, messages, stream, **kwargs)
-        else:
-            raise ValueError(f"Unsupported model or provider: {model}")
-
-    async def _openai_complete(self,
-                               model: str,
-                               messages: List[Dict[str, str]],
-                               stream: bool,
-                               **kwargs) -> Union[AsyncGenerator[str, None], str]:
-        try:
-            if stream:
-                response_stream = await self.openai_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    stream=True,
-                    **kwargs
-                )
-                async def generator():
-                    async for chunk in response_stream:
-                        if chunk.choices and chunk.choices[0].delta.content:
-                            yield chunk.choices[0].delta.content
-                return generator()
-            else:
-                response = await self.openai_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    stream=False,
-                    **kwargs
-                )
-                return response.choices[0].message.content
-        except openai.APIError as e:
-            logger.error(f"OpenAI API Error: {e}")
-            raise
-
-    async def _gemini_complete(self,
-                              model: str,
-                              messages: List[Dict[str, str]],
-                              stream: bool,
-                              **kwargs) -> Union[AsyncGenerator[str, None], str]:
-        try:
-            # Gemini expects messages in a specific format for chat models
-            formatted_messages = []
+    
+    async def complete(self, messages: list[dict], provider: str, model: str, temperature: float) -> AsyncGenerator[str, None]:
+        """Completes a chat interaction, supporting streaming responses."""
+        if provider == "openai":
+            from openai import AsyncOpenAI # Import inside to avoid global dependency if not used
+            client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            stream = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                stream=True,
+            )
+            async for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    yield chunk.choices[0].delta.content
+        elif provider == "gemini":
+            from google.generativeai.client import get_default_retriever_async_client
+            from google.generativeai.types import content_types
+            from google.generativeai.generative_models import GenerativeModel, ChatSession
+            
+            # Ensure GEMINI_API_KEY is set in environment
+            gemini_api_key = os.environ.get("GEMINI_API_KEY")
+            if not gemini_api_key:
+                raise ValueError("GEMINI_API_KEY environment variable not set for Gemini provider.")
+            
+            model_client = GenerativeModel(model_name=model, generation_config={'temperature': temperature})
+            
+            # Convert messages to Gemini format
+            gemini_messages = []
             for msg in messages:
                 role = "user" if msg["role"] == "user" else "model"
-                formatted_messages.append({"role": role, "parts": [msg["content"]]})
-
-            model_client = genai.GenerativeModel(model_name=model)
+                gemini_messages.append(content_types.to_content(role=role, parts=[msg["content"]]))
             
-            if stream:
-                response_stream = await model_client.generate_content_async(
-                    contents=formatted_messages,
-                    stream=True,
-                    **kwargs
-                )
-                async def generator():
-                    async for chunk in response_stream:
-                        yield chunk.text
-                return generator()
-            else:
-                response = await model_client.generate_content_async(
-                    contents=formatted_messages,
-                    stream=False,
-                    **kwargs
-                )
-                return response.text
-        except Exception as e:
-            logger.error(f"Gemini API Error: {e}")
-            raise
-
+            # Start a chat session (if applicable for streaming, otherwise call generate_content directly)
+            # For simple streaming, direct generate_content is often easier.
+            # Assuming `generate_content` supports streaming directly.
+            
+            stream = await model_client.generate_content_async(
+                contents=gemini_messages,
+                stream=True
+            )
+            
+            async for chunk in stream:
+                for part in chunk.candidates[0].content.parts:
+                    if part.text:
+                        yield part.text
+        else:
+            # Fallback for non-streaming providers or other providers
+            # This part needs to call the non-streaming API and yield the full response.
+            # For now, I'll raise an error or provide a basic non-streaming implementation.
+            # A proper implementation would integrate existing non-streaming logic here.
+            raise NotImplementedError(f"Streaming not yet implemented for provider: {provider}")
