@@ -9,6 +9,8 @@ from typing import AsyncGenerator, Dict, Any
 logger = logging.getLogger(__name__)
 
 class LLMRouter:
+    # Cradle AI: Streaming support marker - To be replaced with actual streaming logic.
+
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.client = httpx.AsyncClient()
