@@ -16,7 +16,58 @@ class LLMRouter:
         self.client = httpx.AsyncClient()
 
 
-    async def complete(self, messages, model, max_tokens=None, temperature=0.7, top_p=1.0, stop_sequences=None):
+    async def complete(self, messages, model, max_tokens=None, temperature=0.7, top_p=1.0, stop_sequences=None) -> AsyncGenerator[str, None]:
+            # Placeholder for actual streaming logic.
+            # The LLM provider's client (e.g., OpenAI, Gemini) would be called here with stream=True.
+            # Example for OpenAI:
+            # stream = await client.chat.completions.create(..., stream=True)
+            # async for chunk in stream:
+            #     if chunk.choices[0].delta.content is not None:
+            #         yield chunk.choices[0].delta.content
+            yield 'Start of streaming response... ' 
+            await asyncio.sleep(0.05)
+            yield 'This is a simulated chunk. ' 
+            await asyncio.sleep(0.05)
+            yield 'End of streaming response.'
+        # (Original line commented out: # Determine provider based on model or configuration)
+        # (Original line commented out: provider = self.get_provider_for_model(model) # Assuming such a method exists or can be inferred)
+# (Original line commented out: )
+        # (Original line commented out: if provider == "openai":)
+            # (Original line commented out: from openai import AsyncOpenAI)
+            # (Original line commented out: client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY")))
+            # (Original line commented out: stream = await client.chat.completions.create()
+                # (Original line commented out: model=model,)
+                # (Original line commented out: messages=[{"role": m["role"], "content": m["content"]} for m in messages],)
+                # (Original line commented out: max_tokens=max_tokens,)
+                # (Original line commented out: temperature=temperature,)
+                # (Original line commented out: top_p=top_p,)
+                # (Original line commented out: stop=stop_sequences,)
+                # (Original line commented out: stream=True,)
+            # (Original line commented out: ))
+            # (Original line commented out: async for chunk in stream:)
+                # (Original line commented out: if chunk.choices and chunk.choices[0].delta.content:)
+                    # (Original line commented out: yield chunk.choices[0].delta.content)
+        # (Original line commented out: elif provider == "gemini":)
+            # (Original line commented out: # Example for Gemini, assuming a similar streaming API)
+            # (Original line commented out: # This part needs actual Gemini API integration)
+            # (Original line commented out: from google.generativeai.types import GenerateContentResponse)
+            # (Original line commented out: # Example placeholder, replace with actual Gemini streaming logic)
+            # (Original line commented out: # Assuming a gemini_client is initialized elsewhere)
+            # (Original line commented out: # stream = await self.gemini_client.generate_content_async()
+            # (Original line commented out: #     contents=[{"role": m["role"], "parts": [{"text": m["content"]}]} for m in messages],)
+            # (Original line commented out: #     stream=True,)
+            # (Original line commented out: # ))
+            # (Original line commented out: # For demonstration, we'll yield a simple response)
+            # (Original line commented out: yield "Gemini streaming is not fully implemented yet, but this is a stream...")
+        # (Original line commented out: else:)
+            # (Original line commented out: # Fallback for non-streaming providers or if streaming is not supported/implemented)
+            # (Original line commented out: # This would be the existing non-streaming logic)
+            # (Original line commented out: # For now, we'll yield the full response as a single chunk)
+            # (Original line commented out: response_text = "Non-streaming response simulation.")
+            # (Original line commented out: yield response_text)
+# (Original line commented out: )
+# (Original line commented out: )
+    async def _stream_openai_completion(self, prompt: str, model_name: str, api_key: str, base_url: str, **kwargs) -> AsyncGenerator[str, None]:
         # Determine provider based on model or configuration
         provider = self.get_provider_for_model(model) # Assuming such a method exists or can be inferred
 
@@ -192,4 +243,3 @@ class LLMRouter:
 
         else:
             raise NotImplementedError(f"Non-streaming completion not implemented for provider type: {provider_type}")
-
