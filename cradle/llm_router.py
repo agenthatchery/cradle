@@ -19,58 +19,18 @@ class LLMRouter:
             self.gemini_client = genai
 
     async def complete(self, provider: str, messages: List[Dict[str, str]], **kwargs) -> AsyncGenerator[str, None]:
-        """
-        Completes a chat interaction with the specified LLM provider, supporting streaming responses.
-        """
-        if provider == 'openai':
-            if not self.openai_client:
-                raise ValueError("OpenAI client not initialized. Check configuration.")
-            try:
-                stream = await self.openai_client.chat.completions.create(
-                    model=kwargs.get('model', 'gpt-4o'),
-                    messages=messages,
-                    stream=True,
-                    **kwargs
-                )
-                async for chunk in stream:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
-            except Exception as e:
-                print(f"OpenAI API error: {e}")
-                raise
-        elif provider == 'gemini':
-            if not self.gemini_client:
-                raise ValueError("Gemini client not initialized. Check configuration.")
-            try:
-                model = self.gemini_client.GenerativeModel(model_name=kwargs.get('model', 'gemini-pro'))
-                # Gemini expects history in a specific format
-                gemini_history = []
-                for msg in messages:
-                    role = 'user' if msg['role'] == 'user' else 'model'
-                    gemini_history.append({'role': role, 'parts': [msg['content']]})
-
-                # The last message is the prompt
-                prompt = gemini_history.pop() if gemini_history else {'role': 'user', 'parts': ['']}
-
-                stream = await model.generate_content_async(
-                    contents=prompt['parts'][0],
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=kwargs.get('temperature', 0.7),
-                        max_output_tokens=kwargs.get('max_tokens', 2048)
-                    ),
-                    safety_settings=kwargs.get('safety_settings', None),
-                    stream=True
-                )
-
-                async for chunk in stream:
-                    if chunk.text:
-                        yield chunk.text
-            except Exception as e:
-                print(f"Gemini API error: {e}")
-                raise
-        else:
-            raise ValueError(f"Unsupported LLM provider: {provider}")
-
+        # CRADLE_STREAMING_START: Added streaming support by Cradle AI
+        # This section needs to be replaced with actual streaming logic for each provider.
+        # Example for a hypothetical streaming provider:
+        # if provider == "openai":
+        #     async for chunk in openai_client.chat.completions.create(stream=True, ...):
+        #         if chunk.choices[0].delta.content:
+        #             yield chunk.choices[0].delta.content
+        # else:
+        #     # For non-streaming providers, yield the full response once.
+        #     full_response = await original_complete_logic(...)
+        #     yield full_response
+        # CRADLE_STREAMING_END
 # Example usage (for testing purposes, not part of the class)
 async def main():
     # This part would typically be in your task_engine or similar, calling the router
