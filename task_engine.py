@@ -1,83 +1,102 @@
 
+import uuid
 import logging
-from typing import Dict, Any, List, Optional
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 class Task:
-    def __init__(self, task_id: str, description: str, status: str = "pending", parent_id: Optional[str] = None):
-        self.task_id = task_id
+    def __init__(self, title, description="", parent=None, task_id=None):
+        self.id = task_id if task_id else str(uuid.uuid4())
+        self.title = title
         self.description = description
-        self.status = status
-        self.parent_id = parent_id
-        self.subtasks: List[Task] = []
+        self.status = "pending"  # pending, in_progress, completed, failed
+        self.subtasks = []
+        self.parent = parent
 
-    def add_subtask(self, subtask: 'Task'):
+    def add_subtask(self, subtask):
         self.subtasks.append(subtask)
+        subtask.parent = self
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self):
         return {
-            "task_id": self.task_id,
+            "id": self.id,
+            "title": self.title,
             "description": self.description,
             "status": self.status,
-            "parent_id": self.parent_id,
             "subtasks": [st.to_dict() for st in self.subtasks]
         }
 
-    def __repr__(self) -> str:
-        return f"Task(id={self.task_id}, desc='{self.description}', status='{self.status}')"
+    def __repr__(self):
+        return f"Task(id='{self.id}', title='{self.title}', status='{self.status}')"
 
 class TaskEngine:
     def __init__(self):
-        self.tasks: Dict[str, Task] = {}
-        self.root_tasks: List[Task] = []
+        self.root_tasks = []  # Top-level tasks
+        self.tasks_by_id = {}
+        self._initialize_mock_tasks() # For demonstration
 
-    def add_task(self, task_id: str, description: str, parent_id: Optional[str] = None) -> Task:
-        if task_id in self.tasks:
-            raise ValueError(f"Task with ID {task_id} already exists.")
-        task = Task(task_id, description, parent_id=parent_id)
-        self.tasks[task_id] = task
+    def _initialize_mock_tasks(self):
+        # Create a mock task tree for demonstration purposes
+        task1 = Task("Implement new feature X")
+        task1.status = "in_progress"
+        
+        subtask1_1 = Task("Design API endpoints", parent=task1)
+        subtask1_1.status = "completed"
+        
+        subtask1_2 = Task("Develop backend logic", parent=task1)
+        subtask1_2.status = "in_progress"
+
+        subtask1_2_1 = Task("Write unit tests", parent=subtask1_2)
+        subtask1_2_1.status = "pending"
+
+        subtask1_2.add_subtask(subtask1_2_1)
+        task1.add_subtask(subtask1_1)
+        task1.add_subtask(subtask1_2)
+
+        task2 = Task("Fix critical bug Y")
+        task2.status = "pending"
+
+        self.add_task(task1)
+        self.add_task(task2)
+        logging.info("Initialized mock tasks in TaskEngine.")
+
+    def add_task(self, task, parent_id=None):
         if parent_id:
-            parent_task = self.tasks.get(parent_id)
+            parent_task = self.tasks_by_id.get(parent_id)
             if parent_task:
                 parent_task.add_subtask(task)
             else:
-                logger.warning(f"Parent task {parent_id} not found for task {task_id}.")
-                self.root_tasks.append(task) # Treat as root if parent not found
+                logging.warning(f"Parent task with ID {parent_id} not found. Adding as root task.")
+                self.root_tasks.append(task)
         else:
             self.root_tasks.append(task)
-        logger.info(f"Added task: {task_id} - {description}")
-        return task
+        self.tasks_by_id[task.id] = task
+        logging.info(f"Added task: {task.title}")
 
-    def get_task(self, task_id: str) -> Optional[Task]:
-        return self.tasks.get(task_id)
+    def get_task_by_id(self, task_id):
+        return self.tasks_by_id.get(task_id)
 
-    def update_task_status(self, task_id: str, status: str) -> None:
-        task = self.tasks.get(task_id)
+    def update_task_status(self, task_id, status):
+        task = self.get_task_by_id(task_id)
         if task:
             task.status = status
-            logger.info(f"Updated task {task_id} status to {status}")
-        else:
-            raise ValueError(f"Task with ID {task_id} not found.")
+            logging.info(f"Updated task {task.title} status to {status}")
+            return True
+        logging.warning(f"Task with ID {task_id} not found.")
+        return False
 
-    def _format_task_tree(self, task: Task, level: int = 0) -> str:
-        indent = '    ' * level
-        status_emoji = "✅" if task.status == "completed" else ("⏳" if task.status == "in_progress" else "⚪")
-        tree_str = f"{indent}{status_emoji} {task.description} (ID: {task.task_id}, Status: {task.status})
-"
-        for subtask in task.subtasks:
-            tree_str += self._format_task_tree(subtask, level + 1)
-        return tree_str
+    def get_task_tree(self):
+        """Returns the entire hierarchical task tree as a dictionary suitable for serialization."""
+        # Create a single 'virtual' root if there are multiple actual root tasks
+        # This makes it easier to represent a single tree structure.
+        virtual_root = {
+            "id": "virtual_root",
+            "title": "All Tasks",
+            "status": "active", # Or derive from subtasks
+            "subtasks": [task.to_dict() for task in self.root_tasks]
+        }
+        return virtual_root
 
-    def get_task_tree_visualization(self) -> str:
-        if not self.root_tasks:
-            return ""
-
-        full_tree_str = ""
-        for root_task in self.root_tasks:
-            full_tree_str += self._format_task_tree(root_task)
-        return full_tree_str
-
-    def get_all_tasks(self) -> Dict[str, Any]:
-        return {task_id: task.to_dict() for task_id, task in self.tasks.items()}
+    def __repr__(self):
+        return f"TaskEngine(root_tasks={len(self.root_tasks)} tasks)"
 

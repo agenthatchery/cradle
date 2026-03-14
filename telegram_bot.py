@@ -1,106 +1,93 @@
 
 import logging
-import asyncio
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import asyncio
 
-# Assuming task_engine can be imported or accessed globally if it's a singleton
-# For the purpose of this example, let's assume a placeholder for task_engine interaction
-# In a real scenario, you'd import task_engine and have an instance accessible.
-# from . import task_engine # This might be how it's imported if it's in the same package
+# Assume task_engine is in the same directory or accessible
+# For simplicity in this isolated environment, we'll mock it if not present
+try:
+    from task_engine import TaskEngine
+    task_engine = TaskEngine() # Initialize your TaskEngine instance
+except ImportError:
+    logging.warning("task_engine.py not found or TaskEngine class not available. Mocking TaskEngine.")
+    class MockTaskEngine:
+        def get_task_tree(self):
+            return {
+                "id": "root",
+                "title": "Root Task (Mock)",
+                "status": "active",
+                "subtasks": [
+                    {
+                        "id": "sub1",
+                        "title": "Subtask 1 (Mock)",
+                        "status": "pending",
+                        "subtasks": []
+                    },
+                    {
+                        "id": "sub2",
+                        "title": "Subtask 2 (Mock)",
+                        "status": "completed",
+                        "subtasks": [
+                            {
+                                "id": "sub2_1",
+                                "title": "Subtask 2.1 (Mock)",
+                                "status": "in_progress",
+                                "subtasks": []
+                            }
+                        ]
+                    }
+                ]
+            }
+    task_engine = MockTaskEngine()
 
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
 )
 
-logger = logging.getLogger(__name__)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Hi! I'm your task bot. Use /plan to see your task tree.")
 
-class MockTaskEngine:
-    """A mock task engine to simulate task_engine.py for demonstration."""
-    def get_task_tree(self):
-        # Simulate a hierarchical task tree
-        return {
-            "id": "root",
-            "description": "Overall project",
-            "status": "In Progress",
-            "subtasks": [
-                {
-                    "id": "task1",
-                    "description": "Research phase",
-                    "status": "Completed",
-                    "subtasks": []
-                },
-                {
-                    "id": "task2",
-                    "description": "Implementation phase",
-                    "status": "In Progress",
-                    "subtasks": [
-                        {
-                            "id": "subtask2_1",
-                            "description": "Develop feature A",
-                            "status": "In Progress",
-                            "subtasks": []
-                        },
-                        {
-                            "id": "subtask2_2",
-                            "description": "Test feature A",
-                            "status": "Pending",
-                            "subtasks": []
-                        }
-                    ]
-                },
-                {
-                    "id": "task3",
-                    "description": "Deployment phase",
-                    "status": "Pending",
-                    "subtasks": []
-                }
-            ]
-        }
+async def plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sends the current task tree to the user."""
+    task_tree = task_engine.get_task_tree()
+    tree_str = format_task_tree(task_tree)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"```
+{tree_str}
+```", parse_mode='MarkdownV2')
 
-mock_task_engine = MockTaskEngine() # Replace with actual task_engine instance
+def format_task_tree(node, level=0, prefix=""):
+    """Recursively formats the task tree into a human-readable string."""
+    indent = "  " * level
+    status_icon = {
+        "pending": "⚪",
+        "in_progress": "🟠",
+        "active": "🟢",
+        "completed": "✅",
+        "failed": "❌"
+    }.get(node.get("status", "unknown"), "❓")
+    
+    # Escape special MarkdownV2 characters
+    title = node.get("title", "Untitled").replace("-", "\-").replace("_", "\_").replace(".", "\.").replace("(", "\").replace(")", "\")
+    status = node.get("status", "unknown").replace("-", "\-").replace("_", "\_").replace(".", "\.").replace("(", "\").replace(")", "\")
 
-def format_task_tree(task, indent=0):
-    s = f"{'  ' * indent}- {task['description']} [{task['status']}]
+    tree_string = f"{indent}{prefix}{status_icon} {title} \[{status}\]
 "
-    for subtask in task.get('subtasks', []):
-        s += format_task_tree(subtask, indent + 1)
-    return s
+    for i, subtask in enumerate(node.get("subtasks", [])):
+        new_prefix = "├── " if i < len(node["subtasks"]) - 1 else "└── "
+        tree_string += format_task_tree(subtask, level + 1, new_prefix)
+    return tree_string
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Hi! I'm your task bot. Use /plan to see your task tree.")
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Use /plan to see your current task tree.")
-
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(update.message.text)
-
-async def plan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Sends a formatted task tree to the user."""
-    # In a real scenario, you'd call a method on the actual task_engine instance
-    task_tree = mock_task_engine.get_task_tree()
-    formatted_tree = "Current Task Plan:
-" + format_task_tree(task_tree)
-    await update.message.reply_text(formatted_tree)
-
-def main() -> None:
-    """Start the bot."""
-    # Replace with your actual bot token from @BotFather
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        logger.error("TELEGRAM_BOT_TOKEN environment variable not set.")
-        return
-
-    application = Application.builder().token(token).build()
+async def main():
+    # Replace with your actual bot token
+    application = ApplicationBuilder().token(os.environ.get("TELEGRAM_BOT_TOKEN")).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("plan", plan_command)) # Add the new command handler
+    application.add_handler(CommandHandler("plan", plan))
 
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    await application.run_polling()
 
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    asyncio.run(main())
