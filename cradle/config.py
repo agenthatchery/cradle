@@ -16,6 +16,7 @@ DOCKER_MEMORY_LIMIT = os.environ.get('CRADLE_DOCKER_MEMORY_LIMIT', '512m') # e.g
 DEFAULT_SANDBOX_CPUS = "0.5"  # 0.5 CPU core
 DEFAULT_SANDBOX_MEMORY = "512m" # 512 MB
 class Config:
+    provider_priority: list[str] = ["groq", "gemini-2.5-flash", "openai",]
     # Docker Resource Limits
     docker_cpu_limit: Optional[float] = None # e.g., 0.5 for 50% of one CPU
     docker_memory_limit: Optional[str] = None # e.g., '512m', '1g'
