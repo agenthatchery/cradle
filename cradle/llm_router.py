@@ -1,94 +1,117 @@
 
-import asyncio
-from typing import AsyncGenerator
-import os
-
-import logging
-from typing import AsyncGenerator, Dict, Any, List, Optional, Union
-
 import openai
-from openai import AsyncOpenAI
 import google.generativeai as genai
-from google.generativeai.types import GenerateContentResponse
-
-logger = logging.getLogger(__name__)
+import asyncio
+from typing import AsyncGenerator, Dict, Any, List
 
 class LLMRouter:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.openai_client = None
-        self.gemini_config = None
+        self.gemini_client = None
         self._initialize_clients()
 
     def _initialize_clients(self):
-        if "openai" in self.config:
-            openai_api_key = self.config["openai"].get("api_key")
-            if not openai_api_key:
-                openai_api_key = os.environ.get("OPENAI_API_KEY")
-            if openai_api_key:
-                self.openai_client = AsyncOpenAI(api_key=openai_api_key)
-            else:
-                logger.warning("OpenAI API key not found in config or environment.")
+        if 'openai' in self.config:
+            self.openai_client = openai.AsyncOpenAI(api_key=self.config['openai'].get('api_key'))
+        if 'gemini' in self.config:
+            genai.configure(api_key=self.config['gemini'].get('api_key'))
+            self.gemini_client = genai
 
-        if "gemini" in self.config:
-            gemini_api_key = self.config["gemini"].get("api_key")
-            if not gemini_api_key:
-                gemini_api_key = os.environ.get("GEMINI_API_KEY")
-            if gemini_api_key:
-                genai.configure(api_key=gemini_api_key)
-                self.gemini_config = self.config["gemini"]
-            else:
-                logger.warning("Gemini API key not found in config or environment.")
-
-    
-    
-    
-        async def complete(self, messages: list[dict], model_name: str, temperature: float, max_tokens: int, **kwargs) -> AsyncGenerator[str, None]:
-            client = self._get_client(model_name)
-            if model_name.startswith("gpt"):
-                stream = await client.chat.completions.create(
-                    model=model_name,
+    async def complete(self, provider: str, messages: List[Dict[str, str]], **kwargs) -> AsyncGenerator[str, None]:
+        """
+        Completes a chat interaction with the specified LLM provider, supporting streaming responses.
+        """
+        if provider == 'openai':
+            if not self.openai_client:
+                raise ValueError("OpenAI client not initialized. Check configuration.")
+            try:
+                stream = await self.openai_client.chat.completions.create(
+                    model=kwargs.get('model', 'gpt-4o'),
                     messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
                     stream=True,
                     **kwargs
                 )
                 async for chunk in stream:
-                    if chunk.choices and chunk.choices[0].delta.content is not None:
+                    if chunk.choices and chunk.choices[0].delta.content:
                         yield chunk.choices[0].delta.content
-            elif model_name.startswith("gemini"):
-                # Assuming Gemini client is already set up and supports streaming
-                # This part needs to be adapted based on the actual Gemini client usage
-                # Example for google.generativeai client (needs 'packages': ['google-generativeai'])
-                model = client.get_model(model_name)
-                response_stream = model.generate_content(
-                    messages, 
-                    generation_config={
-                        "temperature": temperature,
-                        "max_output_tokens": max_tokens,
-                    },
-                    stream=True,
-                    **kwargs
+            except Exception as e:
+                print(f"OpenAI API error: {e}")
+                raise
+        elif provider == 'gemini':
+            if not self.gemini_client:
+                raise ValueError("Gemini client not initialized. Check configuration.")
+            try:
+                model = self.gemini_client.GenerativeModel(model_name=kwargs.get('model', 'gemini-pro'))
+                # Gemini expects history in a specific format
+                gemini_history = []
+                for msg in messages:
+                    role = 'user' if msg['role'] == 'user' else 'model'
+                    gemini_history.append({'role': role, 'parts': [msg['content']]})
+
+                # The last message is the prompt
+                prompt = gemini_history.pop() if gemini_history else {'role': 'user', 'parts': ['']}
+
+                stream = await model.generate_content_async(
+                    contents=prompt['parts'][0],
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=kwargs.get('temperature', 0.7),
+                        max_output_tokens=kwargs.get('max_tokens', 2048)
+                    ),
+                    safety_settings=kwargs.get('safety_settings', None),
+                    stream=True
                 )
-                async for chunk in response_stream:
-                    yield chunk.text
-            else:
-                # Fallback for non-streaming models or other providers
-                # This might need to be a separate non-streaming 'complete_non_streaming' method
-                # or handled by calling the non-streaming API and yielding the full result once.
-                # For now, let's assume direct call and yield once.
-                response = await client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
-                )
-                if hasattr(response, 'choices') and response.choices:
-                    yield response.choices[0].message.content
-                elif hasattr(response, 'text'): # For Gemini non-streaming fallback
-                    yield response.text
-                else:
-                    yield str(response) # Generic fallback
-    
+
+                async for chunk in stream:
+                    if chunk.text:
+                        yield chunk.text
+            except Exception as e:
+                print(f"Gemini API error: {e}")
+                raise
+        else:
+            raise ValueError(f"Unsupported LLM provider: {provider}")
+
+# Example usage (for testing purposes, not part of the class)
+async def main():
+    # This part would typically be in your task_engine or similar, calling the router
+    # For demonstration, assume a config is available
+    config = {
+        'openai': {'api_key': os.environ.get('OPENAI_API_KEY')},
+        'gemini': {'api_key': os.environ.get('GEMINI_API_KEY')}
+    }
+    router = LLMRouter(config)
+
+    print("
+--- OpenAI Streaming ---")
+    openai_messages = [{
+        "role": "user",
+        "content": "Tell me a very short story about a robot and a cat."
+    }]
+    try:
+        async for chunk in router.complete('openai', openai_messages, model='gpt-3.5-turbo'):
+            print(chunk, end='')
+        print('
+')
+    except ValueError as e:
+        print(f"Error with OpenAI: {e}")
+
+    print("
+--- Gemini Streaming ---")
+    gemini_messages = [{
+        "role": "user",
+        "content": "Write a haiku about autonomous agents."
+    }]
+    try:
+        async for chunk in router.complete('gemini', gemini_messages, model='gemini-pro'):
+            print(chunk, end='')
+        print('
+')
+    except ValueError as e:
+        print(f"Error with Gemini: {e}")
+
+if __name__ == '__main__':
+    # Only run main if API keys are available for testing purposes
+    if os.environ.get('OPENAI_API_KEY') or os.environ.get('GEMINI_API_KEY'):
+        asyncio.run(main())
+    else:
+        print("Set OPENAI_API_KEY or GEMINI_API_KEY environment variables to run example usage.")
