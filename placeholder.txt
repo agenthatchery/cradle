@@ -1,1 +1,1 @@
-This is a placeholder file to test git commit functionality.
+This is a placeholder file to test git commit.
