@@ -1,76 +1,71 @@
 
-import os
-import json
-from typing import Optional, Dict, Any
 import google.generativeai as genai
+import json
+import os
 
-def llm_code_review(file_path: str, diff: Optional[str] = None) -> Dict[str, Any]:
+def setup_gemini():
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY environment variable not set.")
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel('gemini-1.5-pro')
+
+def llm_code_review(file_content: str, file_path: str = "", diff: str = "") -> dict:
     """
-    Performs an LLM-powered code review on a given file or diff.
+    Performs an LLM-powered code review using Gemini 1.5 Pro.
 
     Args:
-        file_path (str): The path to the file to review.
-        diff (Optional[str]): An optional diff string to review. If provided,
-                              the review will focus on the changes.
+        file_content (str): The content of the file to review.
+        file_path (str): The path to the file (optional, for context).
+        diff (str): A diff string if only changes are to be reviewed (optional).
 
     Returns:
-        Dict[str, Any]: A JSON object with actionable recommendations.
+        dict: A JSON object with actionable recommendations.
     """
-    if not os.path.exists(file_path):
-        return {"error": f"File not found: {file_path}"}
+    model = setup_gemini()
 
-    with open(file_path, 'r') as f:
-        file_content = f.read()
+    prompt = f"""You are an expert code reviewer. Perform a thorough code review for the following code. Focus on identifying potential bugs, security vulnerabilities, performance issues, and style guide violations. Provide actionable recommendations.
 
-    # Configure Gemini API
-    gemini_api_key = os.environ.get("GEMINI_API_KEY")
-    if not gemini_api_key:
-        return {"error": "GEMINI_API_KEY environment variable not set."}
-    genai.configure(api_key=gemini_api_key)
+File Path: {file_path}
 
-    model = genai.GenerativeModel('gemini-1.5-pro') # Using 1.5 Pro as 3.1 Pro might not be available or stable yet
-
-    prompt_parts = [
-        "You are an expert code reviewer. Perform a thorough code review focusing on potential bugs, security vulnerabilities, performance issues, and style guide violations.",
-        "Provide actionable recommendations in a JSON format. The JSON should be an array of objects, where each object has 'line', 'severity' (e.g., 'critical', 'high', 'medium', 'low', 'info'), 'category' (e.g., 'bug', 'security', 'performance', 'style'), and 'recommendation' fields.",
-        "If there are no issues, return an empty array. Do not include any other text outside the JSON.",
-        "---
-"
-    ]
-
+"""
     if diff:
-        prompt_parts.append(f"Review the following diff for file `{file_path}`:
-```diff
-{diff}
-```
-")
-        prompt_parts.append(f"Here is the full file content for context:
-```
-{file_content}
-```
-")
-    else:
-        prompt_parts.append(f"Review the following file content for `{file_path}`:
-```
-{file_content}
-```
-")
+        prompt += "Review the following diff:
 
-    prompt_parts.append("---
-JSON Output:")
+" + diff + "
+
+"
+        prompt += "Consider the overall file context provided below, but prioritize the changes in the diff.
+
+"
+        prompt += "Full File Content (for context):
+
+" + file_content
+    else:
+        prompt += "Code to review:
+
+" + file_content
+
+    prompt += "
+
+Provide your review as a JSON object with a single key 'recommendations'. The value should be a list of objects, each with 'type' (e.g., 'bug', 'security', 'performance', 'style', 'refactor'), 'line_number' (if applicable, null otherwise), 'description', and 'severity' (e.g., 'critical', 'high', 'medium', 'low', 'info').
+
+Example:
+{{"recommendations": [
+  {{"type": "bug", "line_number": 42, "description": "Potential off-by-one error in loop condition.", "severity": "high"}},
+  {{"type": "security", "line_number": null, "description": "Consider input sanitization for user-provided data.", "severity": "medium"}},
+  {{"type": "style", "line_number": 15, "description": "Missing docstring for function `my_func`.", "severity": "info"}}
+]}}"
 
     try:
-        response = model.generate_content("
-".join(prompt_parts))
-        # The API might return text with markdown fences, try to extract JSON
-        response_text = response.text.strip()
-        if response_text.startswith('```json') and response_text.endswith('```'):
-            json_str = response_text[7:-3].strip()
+        response = model.generate_content(prompt)
+        # The LLM might return markdown code block, try to parse it.
+        text_response = response.text.strip()
+        if text_response.startswith('```json') and text_response.endswith('```'):
+            json_str = text_response[7:-3].strip()
         else:
-            json_str = response_text
-
-        review_results = json.loads(json_str)
-        return {"review_results": review_results}
+            json_str = text_response
+        return json.loads(json_str)
     except Exception as e:
-        return {"error": f"LLM API call or JSON parsing failed: {e}", "raw_response": response.text if 'response' in locals() else 'No response'}
+        return {{"error": str(e), "raw_response": response.text if 'response' in locals() else "No response received"}}
 
