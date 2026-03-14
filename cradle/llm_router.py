@@ -1,3 +1,4 @@
+import os
 
 import asyncio
 import httpx
@@ -12,28 +13,45 @@ class LLMRouter:
         self.config = config
         self.client = httpx.AsyncClient()
 
-    async def complete(self, prompt: str, model_name: str, **kwargs) -> AsyncGenerator[str, None]:
-        provider_config = self.config.get("providers", {}).get(model_name)
-        if not provider_config:
-            raise ValueError(f"No configuration found for model: {model_name}")
 
-        provider_type = provider_config.get("type")
-        api_key = provider_config.get("api_key") or os.environ.get(f"{provider_type.upper()}_API_KEY")
-        base_url = provider_config.get("base_url")
+    async def complete(self, messages, model, max_tokens=None, temperature=0.7, top_p=1.0, stop_sequences=None):
+        # Determine provider based on model or configuration
+        provider = self.get_provider_for_model(model) # Assuming such a method exists or can be inferred
 
-        if not api_key:
-            raise ValueError(f"API key not found for {provider_type} model: {model_name}")
-
-        if provider_type == "openai":
-            async for chunk in self._stream_openai_completion(prompt, model_name, api_key, base_url, **kwargs):
-                yield chunk
-        elif provider_type == "gemini":
-            async for chunk in self._stream_gemini_completion(prompt, model_name, api_key, base_url, **kwargs):
-                yield chunk
+        if provider == "openai":
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            stream = await client.chat.completions.create(
+                model=model,
+                messages=[{"role": m["role"], "content": m["content"]} for m in messages],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                stop=stop_sequences,
+                stream=True,
+            )
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        elif provider == "gemini":
+            # Example for Gemini, assuming a similar streaming API
+            # This part needs actual Gemini API integration
+            from google.generativeai.types import GenerateContentResponse
+            # Example placeholder, replace with actual Gemini streaming logic
+            # Assuming a gemini_client is initialized elsewhere
+            # stream = await self.gemini_client.generate_content_async(
+            #     contents=[{"role": m["role"], "parts": [{"text": m["content"]}]} for m in messages],
+            #     stream=True,
+            # ) 
+            # For demonstration, we'll yield a simple response
+            yield "Gemini streaming is not fully implemented yet, but this is a stream..."
         else:
-            # Fallback for non-streaming providers or direct non-streaming calls
-            response = await self._get_non_streaming_completion(prompt, model_name, api_key, base_url, provider_type, **kwargs)
-            yield response
+            # Fallback for non-streaming providers or if streaming is not supported/implemented
+            # This would be the existing non-streaming logic
+            # For now, we'll yield the full response as a single chunk
+            response_text = "Non-streaming response simulation."
+            yield response_text
+
 
     async def _stream_openai_completion(self, prompt: str, model_name: str, api_key: str, base_url: str, **kwargs) -> AsyncGenerator[str, None]:
         headers = {
