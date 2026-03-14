@@ -20,7 +20,7 @@ class Config:
     docker_cpu_limit: Optional[float] = None # e.g., 0.5 for 50% of one CPU
     docker_memory_limit: Optional[str] = None # e.g., '512m', '1g'
 
-    LLM_PROVIDER_PRIORITY = ["groq", "openai", "gemini-2.5-flash"]
+    LLM_PROVIDER_PRIORITY = ['Groq', 'Gemini 2.5 Flash', 'OpenAI']
     SANDBOX_MEMORY_LIMIT: str = '256m' # Memory limit for sandbox containers (e.g., '256m', '1g')
         SANDBOX_CPU_LIMIT: Optional[str] = None # e.g., '0.5' for 0.5 CPU core
         SANDBOX_MEMORY_LIMIT: Optional[str] = None # e.g., '512m', '1g'
