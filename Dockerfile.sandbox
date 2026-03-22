@@ -1,0 +1,22 @@
+# Sandbox image for Cradle agent code execution
+# Pre-installs git, curl, and other common tools to avoid inline installs
+FROM python:3.12-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        wget \
+        jq \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install static docker CLI
+RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-26.0.1.tgz \
+    && tar xzvf docker-26.0.1.tgz --strip 1 -C /usr/local/bin docker/docker \
+    && rm docker-26.0.1.tgz
+
+# Suppress pip root-user warning
+ENV PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /workspace
